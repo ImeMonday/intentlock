@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IntentLock | Payment instruction verification</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2319C3B1'/%3E%3Cpath d='M16 6l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9z' fill='%230A1424'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0A1424;--panel:#13243B;--raise:#18304D;--line:#243E5E;--text:#ECF1F7;--muted:#9AAEC4;--faint:#6D839E;--teal:#19C3B1;--amber:#F5A524;--orange:#FF8A4C;--red:#FF6B5B;--sans:"IBM Plex Sans",system-ui,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 420px at 78% -8%,rgba(25,195,177,.11),transparent 62%),var(--ink);color:var(--text);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-size:13px;word-break:break-all}
+.muted{color:var(--muted)} small{color:var(--faint);font-size:12.5px}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(10,20,36,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}.brand b{display:block;font-size:17px;font-weight:600;line-height:1.2}.brand span{font-size:12.5px;color:var(--muted)}
+.bar-r{display:flex;align-items:center;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--faint)}.pill.on i{background:var(--teal)}.pill.on{color:var(--text)}
+.wrap{max-width:1240px;margin:0 auto;padding:36px 24px 90px}
+.intro{max-width:720px;margin-bottom:28px}
+.intro h1{font-size:34px;line-height:1.15;font-weight:600;letter-spacing:-.02em}
+.intro p{margin-top:10px;color:var(--muted);font-size:16px}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px;align-items:start}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}.intro h1{font-size:28px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
+.card h2{font-size:18px;font-weight:600}
+.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.try{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:18px;padding:12px;background:var(--ink);border:1px dashed var(--line);border-radius:12px}
+.try span{font-size:13px;color:var(--muted);margin-right:4px}
+.f{margin-top:14px}.f label{display:block;font-size:13.5px;font-weight:500;margin-bottom:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.two{grid-template-columns:1fr}}
+input,select,textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{resize:vertical;font-family:var(--mono);font-size:12.5px;line-height:1.5}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.drop{display:flex;align-items:center;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:11px 12px;color:var(--muted);cursor:pointer}
+.drop:hover{border-color:var(--teal)}
+.adv{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:0 12px}
+.adv summary{cursor:pointer;padding:11px 0;font-weight:500;font-size:13.5px}.adv[open] summary{border-bottom:1px solid var(--line);margin-bottom:12px}
+.adv .row{margin:12px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{border:0;border-radius:10px;padding:11px 18px;font-weight:600;cursor:pointer;background:var(--raise);color:var(--text)}
+.btn.primary{background:var(--teal);color:#05221E}.btn.primary:hover{background:#2AD6C4}
+.btn.secondary{background:var(--raise);border:1px solid var(--line)}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.btn.warn{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:8px}.btn.block{width:100%;margin-top:18px;padding:13px}
+.btn[disabled]{opacity:.6;cursor:progress}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:5px 13px;font-size:13px;cursor:pointer}.chip:hover{border-color:var(--teal)}
+.link{background:none;border:0;color:var(--teal);cursor:pointer;padding:0;font-weight:500}
+.empty{text-align:center;padding:56px 32px}.empty svg{color:var(--faint)}.empty h3{margin:14px 0 6px;font-size:18px}.empty p{color:var(--muted);max-width:380px;margin:0 auto}
+.res{animation:in .35s ease}@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@media(prefers-reduced-motion:reduce){.res{animation:none}html{scroll-behavior:auto}.drawer{transition:none}}
+.steps{display:flex;list-style:none;margin:0 0 20px;padding:0;gap:6px}
+.steps li{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--faint);padding-bottom:10px;border-bottom:2px solid var(--line)}
+.steps li span{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font-size:12px}
+.steps li.on{color:var(--text);border-color:var(--teal)}.steps li.on span{border-color:var(--teal);color:var(--teal)}
+.steps li.done{color:var(--muted);border-color:var(--teal)}.steps li.done span{background:var(--teal);border-color:var(--teal);color:#05221E}
+.verdict{display:flex;gap:16px;padding:20px;border-radius:14px;border:1px solid var(--line);border-left-width:5px}
+.verdict h2{font-size:24px;font-weight:600;line-height:1.2}.verdict p{margin-top:6px;color:var(--muted)}
+.vi{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%}
+.verdict.ok{border-color:var(--teal);background:rgba(25,195,177,.08)}.ok .vi,.badge.ok{background:rgba(25,195,177,.16);color:var(--teal)}
+.verdict.warn{border-color:var(--amber);background:rgba(245,165,36,.08)}.warn .vi,.badge.warn{background:rgba(245,165,36,.16);color:var(--amber)}
+.verdict.bad{border-color:var(--red);background:rgba(255,107,91,.08)}.bad .vi,.badge.bad{background:rgba(255,107,91,.16);color:var(--red)}
+.verdict.off{background:rgba(154,174,196,.06)}.off .vi,.badge.off{background:rgba(154,174,196,.14);color:var(--muted)}
+.badge.mid{background:rgba(255,138,76,.16);color:var(--orange)}.badge.sim{background:rgba(91,164,255,.16);color:#7DB7FF}
+.verdict.sm{padding:14px}.verdict.sm .vi{width:36px;height:36px}.verdict.sm b{font-size:16px;display:block}.verdict.sm small{display:block}
+.badge{flex:none;align-self:flex-start;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:500}
+.meter{display:flex;align-items:center;gap:6px;margin:16px 0 4px}.meter i{width:46px;height:6px;border-radius:3px;background:var(--line)}
+.meter i.r0{background:var(--teal)}.meter i.r1{background:var(--amber)}.meter i.r2{background:var(--orange)}.meter i.r3{background:var(--red)}
+.meter span{margin-left:8px;font-size:13px;color:var(--muted)}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:18px 0 0;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.facts div{background:var(--panel);padding:11px 14px}.facts .full{grid-column:1/-1}
+.facts dt{font-size:12.5px;color:var(--faint)}.facts dd{margin:2px 0 0}
+.sec{margin-top:26px}.sec h3{font-size:16px;font-weight:600;margin-bottom:6px}.sub{color:var(--muted);font-size:14px;margin-bottom:10px}
+.note{font-size:13px;color:var(--faint);margin-bottom:8px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 14px}@media(max-width:560px){.cmp{grid-template-columns:1fr}}
+.cmp>div{border-radius:12px;padding:14px;border:1px solid var(--line)}.cmp small{display:block;margin-bottom:6px}
+.cmp .bad{border-color:var(--red);background:rgba(255,107,91,.07)}.cmp .ok{border-color:var(--teal);background:rgba(25,195,177,.07)}
+mark{background:rgba(255,107,91,.32);color:var(--text);border-radius:2px}
+.fl{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.fi{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--ink);border:1px solid var(--line);border-radius:12px}
+.fi svg{flex:none;margin-top:2px}.fi.bad svg{color:var(--red)}.fi.warn svg{color:var(--amber)}.fi.mid svg{color:var(--orange)}.fi.ok svg{color:var(--teal)}
+.fi div{flex:1;min-width:0}.fi b{font-weight:500}.fi p{color:var(--muted);font-size:13.5px;margin-top:2px}
+.check{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px}.check input{width:auto}
+.prog{height:6px;border-radius:3px;background:var(--line);margin:14px 0 6px;overflow:hidden}.prog i{display:block;height:100%;background:var(--teal)}
+.proof{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:28px;padding-top:18px;border-top:1px solid var(--line)}
+.proof b{display:block;font-weight:600}.proof span{font-size:13px;color:var(--muted)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--faint);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}tr:last-child td{border-bottom:0}
+.hist{margin-top:24px}.empty-s{color:var(--muted);padding:8px 0}
+.scrim{position:fixed;inset:0;background:rgba(3,8,16,.6);z-index:30}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:40;padding:24px;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease}
+.drawer.open{transform:none}
+.sup{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:10px;background:var(--ink)}
+.sup-h{display:flex;justify-content:space-between;gap:8px;align-items:center}.wal{margin-top:10px}.wal small{display:block}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--teal);color:#05221E;padding:11px 18px;border-radius:10px;font-weight:600;z-index:50;display:none;max-width:92%}
+.toast.show{display:block}.toast.err{background:var(--red);color:#2B0B07}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="bar">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#19C3B1"/><path d="M16 6l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9z" fill="#0A1424"/><path d="M12.5 15.5l2.6 2.6 4.6-5" fill="none" stroke="#19C3B1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><b>IntentLock</b><span>Payment instruction verification</span></div>
+  </div>
+  <div class="bar-r"><span id="ai" class="pill"><i></i><em id="aiText" style="font-style:normal">Checking</em></span><button class="btn secondary sm" id="suppBtn">Suppliers</button></div>
+</div></header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1>Verify the payment instruction before the money moves.</h1>
+    <p>Paste an invoice or a message. IntentLock compares the payment destination with your supplier’s verified record, then confirms the payment on-chain.</p>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>New check</h2></div>
+      <div class="try"><span>Try it with demo data</span>
+        <button class="chip" id="demoBtn">Load demo supplier</button><button class="chip" id="loadA">Genuine invoice</button><button class="chip" id="loadB">Tampered invoice</button></div>
+      <div class="f"><label for="supplier">Who are you paying?</label><select id="supplier"></select></div>
+      <div class="f"><label for="sender">Sender email or domain <small>(optional)</small></label><input id="sender" placeholder="billing@supplier.com"></div>
+      <div class="f"><label for="text">Invoice or message text</label><textarea id="text" rows="9" placeholder="Paste the invoice text or the WhatsApp message here"></textarea></div>
+      <div class="f"><label class="drop" for="file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="fname">Or upload a PDF</span></label><input type="file" id="file" accept=".pdf,.txt,.png,.jpg,.jpeg,.webp" hidden></div>
+      <details class="adv" id="adv"><summary>Supplier signature <small>(optional)</small></summary>
+        <textarea id="signed" rows="6" placeholder="Signed payment instruction (JSON)"></textarea>
+        <div class="row"><button class="btn secondary sm" id="signBtn">Sign as supplier (demo)</button><button class="btn ghost sm" id="tamperBtn">Tamper with signature</button></div>
+      </details>
+      <button class="btn primary block" id="runBtn">Run check</button>
+    </section>
+
+    <section id="out">
+      <div class="card empty">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        <h3>Your verdict appears here</h3>
+        <p>Run a check to see the risk level, what was compared, and what to do next.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="card hist"><div class="card-h"><h2>Recent checks</h2></div><div id="history"></div></section>
+</main>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" aria-label="Suppliers" aria-hidden="true">
+  <div class="card-h"><h2>Suppliers</h2><button class="btn ghost sm" id="closeDrawer">Close</button></div>
+  <div id="suppliers"></div>
+  <div class="sec"><h3>Add a supplier</h3>
+    <div class="f"><label for="sName">Supplier name</label><input id="sName" placeholder="Global Trade Ltd"></div>
+    <div class="f"><label for="sWallet">Approved wallet (TRON or Ethereum)</label><input id="sWallet" placeholder="T... or 0x..."></div>
+    <div class="f"><label for="sDomain">Known email domain <small>(optional)</small></label><input id="sDomain" placeholder="supplier.com"></div>
+    <label class="check"><input type="checkbox" id="sKey"> Create a demo signing key</label>
+    <button class="btn primary block" id="addBtn">Save supplier</button>
+  </div>
+</aside>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const P = {
+  check: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/>',
+  alert: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  x: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  tick: '<path d="M20 6 9 17l-5-5"/>'
+};
+const ico = (n, s = 20) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+const LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"], LEVEL_TEXT = ["Low", "Medium", "High", "Critical"];
+const RANK = {critical: 3, high: 2, medium: 1, info: 0};
+const SEV = {critical: ["Critical", "bad", "x"], high: ["High", "warn", "alert"], medium: ["Medium", "mid", "alert"], info: ["Info", "ok", "info"]};
+const VERDICT = {
+  approved: ["Approved to pay", "ok", "check"], approved_verified: ["Approved after verification", "ok", "check"],
+  approved_swapped: ["Approved: pay the verified wallet", "ok", "check"], needs_verification: ["Verify before paying", "warn", "alert"],
+  withheld: ["Approval withheld", "bad", "x"], rejected: ["Rejected", "off", "x"]
+};
+const SV = {
+  VERIFIED: ["Payment verified on-chain", "ok", "check"], PENDING: ["Waiting for confirmations", "warn", "alert"], PARTIAL: ["Partial payment", "warn", "alert"],
+  MISMATCH: ["Paid to the wrong destination", "bad", "x"], FAKE_TOKEN: ["Fake token, not real USDT", "bad", "x"],
+  NOT_FOUND: ["Transaction not found", "warn", "alert"], NO_TRANSFER: ["No token transfer found", "warn", "alert"], FAILED: ["Transaction failed", "bad", "x"]
+};
+let samples = null;
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const d = data && data.detail;
+    throw new Error(typeof d === "string" ? d : d ? JSON.stringify(d) : res.statusText);
+  }
+  return data;
+}
+const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+function toast(msg, err) {
+  const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.className = "toast", 4500);
+}
+async function run(btn, fn) {
+  const label = btn && btn.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+  try { await fn(); } catch (e) { toast(e.message, true); }
+  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = label; } }
+}
+const fmtTime = s => { const d = new Date(s); return isNaN(d) ? s : d.toLocaleString([], {dateStyle: "medium", timeStyle: "short"}); };
+const num = n => n == null ? "n/a" : Number(n).toLocaleString();
+function diffAddr(a, b) {
+  return [...(a || "")].map((ch, i) => ch === (b || "")[i] ? esc(ch) : `<mark>${esc(ch)}</mark>`).join("");
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]");
+  if (b && navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(() => toast("Copied"));
+});
+
+/* ---------- data loading ---------- */
+async function loadHealth() {
+  const h = await api("/api/health");
+  $("ai").className = "pill" + (h.llm_enabled ? " on" : "");
+  $("aiText").textContent = h.llm_enabled ? "AI reading on" : "Built-in rules";
+  $("ai").title = h.llm_enabled ? "" : "Add an LLM key in .env to turn on AI reading";
+}
+async function loadSuppliers() {
+  const list = await api("/api/suppliers");
+  $("suppliers").innerHTML = list.length ? list.map(s => `<article class="sup"><div class="sup-h"><b>${esc(s.name)}</b>${s.signing_address ? '<span class="badge ok">Signs instructions</span>' : ""}</div>
+    <p class="muted">${esc(s.known_domain || "No email domain set")}</p>
+    ${s.destinations.map(d => `<div class="wal"><small>${esc(d.network)} wallet</small><span class="mono">${esc(d.address)}</span></div>`).join("")}</article>`).join("")
+    : '<p class="muted">No suppliers yet. Load the demo supplier or add one below.</p>';
+  const keep = $("supplier").value;
+  $("supplier").innerHTML = '<option value="">Detect from the invoice</option>' + list.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
+  $("supplier").value = keep;
+}
+async function loadHistory() {
+  const rows = await api("/api/checks");
+  $("history").innerHTML = rows.length ? `<div class="tw"><table><thead><tr><th>Supplier</th><th>Invoice</th><th>Amount</th><th>Status</th><th>Checked</th><th></th></tr></thead><tbody>
+    ${rows.map(r => { const v = VERDICT[r.status] || [r.status, "off"]; return `<tr><td>${esc(r.supplier_name)}</td><td class="mono">${esc(r.invoice_number || "n/a")}</td>
+    <td>${num(r.amount)} ${esc(r.currency || "")}</td><td><span class="badge ${v[1]}">${esc(v[0])}</span></td><td class="muted">${esc(fmtTime(r.created_at))}</td>
+    <td><button class="link" onclick="openCheck(${r.id})">View</button></td></tr>`; }).join("")}</tbody></table></div>`
+    : '<p class="empty-s">No checks yet. Run your first one above.</p>';
+}
+
+/* ---------- result ---------- */
+function findingsHtml(list) {
+  return [...list].sort((a, b) => RANK[b.severity] - RANK[a.severity]).map(f => {
+    const [label, kind, icon] = SEV[f.severity] || SEV.info;
+    return `<li class="fi ${kind}">${ico(icon, 18)}<div><b>${esc(f.title)}</b><p>${esc(f.detail)}</p></div><span class="badge ${kind}">${label}</span></li>`;
+  }).join("");
+}
+function render(c) {
+  const [vt, vc, vi] = VERDICT[c.status] || [c.status, "off", "info"];
+  const approved = ["approved", "approved_verified", "approved_swapped"].includes(c.status);
+  const needs = ["needs_verification", "withheld"].includes(c.status);
+  const blocking = c.findings.some(f => f.blocking);
+  const verified = c.settlement && c.settlement.status === "VERIFIED";
+  const stage = verified ? 4 : needs ? 1 : approved ? (c.settlement ? 3 : 2) : 0;
+  const steps = ["Check", "Confirm", "Pay", "Verify"];
+  const idx = Math.max(0, LEVELS.indexOf(c.risk));
+  const reg = c.registered || [];
+  const amount = c.amount != null ? `${num(c.amount)} ${esc(c.currency || "")}` : "not found";
+
+  let html = `<div class="card res">
+    <ol class="steps">${steps.map((s, i) => `<li class="${i < stage ? "done" : i === stage ? "on" : ""}"><span>${i < stage ? ico("tick", 13) : i + 1}</span>${s}</li>`).join("")}</ol>
+    <div class="verdict ${vc}"><span class="vi">${ico(vi, 26)}</span><div><h2>${esc(vt)}</h2><p>${esc(c.explanation)}</p></div></div>
+    <div class="meter" aria-label="Risk level">${LEVELS.map((l, i) => `<i class="${i <= idx ? "r" + idx : ""}"></i>`).join("")}<span>${LEVEL_TEXT[idx]} risk</span></div>
+    <dl class="facts">
+      <div><dt>Supplier</dt><dd>${esc(c.supplier_name)}</dd></div><div><dt>Invoice</dt><dd>${esc(c.invoice_number || "Not found")}</dd></div>
+      <div><dt>Amount</dt><dd>${amount}</dd></div><div><dt>Sender domain</dt><dd>${esc(c.sender_domain || "Not provided")}</dd></div>
+      <div class="full"><dt>Pay to (${esc(c.network || "unknown network")})</dt><dd>${c.destination ? `<span class="mono">${esc(c.destination)}</span> <button class="link" data-copy="${esc(c.destination)}">Copy</button>` : "Not found"}</dd></div>
+      <div class="full"><dt>Invoice read by</dt><dd>${esc(c.extracted.extraction_method || "")}</dd></div>
+    </dl>`;
+
+  if (needs && reg.length && c.destination !== reg[0].address) {
+    html += `<div class="sec"><h3>Compare the wallets</h3><p class="sub">Characters that differ from the registered wallet are highlighted.</p>
+      <div class="cmp"><div class="bad"><small>The invoice says</small><span class="mono">${diffAddr(c.destination || "No wallet found", reg[0].address)}</span></div>
+      <div class="ok"><small>Registered wallet (verified)</small><span class="mono">${esc(reg[0].address)}</span></div></div>
+      <button class="btn primary" onclick="useVerified(${c.id}, this)">Swap to the verified wallet</button></div>`;
+  }
+  html += `<div class="sec"><h3>What we checked</h3><ul class="fl">${findingsHtml(c.findings)}</ul></div>`;
+
+  if (needs) {
+    html += blocking ? `<div class="sec"><p class="sub">This invoice has no usable destination, so it cannot be approved.</p></div>` : `<div class="sec"><h3>Confirm out-of-band</h3>
+      <p class="sub">Contact the supplier on a number or channel you already trust, not the one in the message.</p>
+      <div class="two"><div class="f"><label for="cMethod">How did you confirm?</label><select id="cMethod"><option value="callback">Called a saved phone number</option><option value="second_approver">Second approver agreed</option><option value="supplier_channel">Supplier’s verified channel</option></select></div>
+      <div class="f"><label for="cBy">Who confirmed?</label><input id="cBy" placeholder="Your name"></div></div>
+      <div class="f"><label for="cNote">Note <small>(optional)</small></label><input id="cNote" placeholder="Spoke to their finance manager"></div>
+      <label class="check"><input type="checkbox" id="cAdd"> Add this destination to the supplier’s approved list</label>
+      <div class="row"><button class="btn primary" onclick="confirmCheck(${c.id}, this)">Record confirmation and approve</button><button class="btn warn" onclick="rejectCheck(${c.id}, this)">Reject invoice</button></div></div>`;
+  }
+  if (c.dest_kind === "wallet") {
+    html += `<div class="sec"><h3>${approved ? "Pay, then verify" : "After you pay, verify the payment"}</h3>
+      <p class="sub">${approved ? `Send ${amount} to the wallet above from your own wallet or Cleva account. Then paste the transaction hash.` : "Paste the transaction hash after paying."}</p>
+      <p class="note">For rehearsal use DEMO-REAL, DEMO-FAKE, DEMO-WRONG, DEMO-PARTIAL or DEMO-PENDING. Results are labelled simulated.</p>
+      <div class="two"><div class="f"><label for="tx">Transaction hash</label><input id="tx" placeholder="Paste the hash"></div>
+      <div class="f"><label for="txNet">Network</label><select id="txNet"><option value="TRON"${c.network === "TRON" ? " selected" : ""}>TRON (TRC20)</option><option value="ETHEREUM"${c.network === "ETHEREUM" ? " selected" : ""}>Ethereum (ERC20)</option></select></div></div>
+      <button class="btn primary" style="margin-top:14px" onclick="settle(${c.id}, this)">Verify payment</button></div>`;
+  }
+  if (c.settlement) {
+    const s = c.settlement, [st, sk, si] = SV[s.status] || [s.status, "off", "info"];
+    const pct = Math.min(100, Math.round(100 * s.confirmations / (s.required_confirmations || 1)));
+    html += `<div class="sec"><div class="verdict sm ${sk}"><span class="vi">${ico(si, 20)}</span><div><b>${esc(st)}</b><small>${num(s.received)} USDT received</small></div>${s.simulated ? '<span class="badge sim">Simulated</span>' : ""}</div>
+      <div class="prog"><i style="width:${pct}%"></i></div><p class="sub">${s.confirmations} of ${s.required_confirmations} confirmations</p><ul class="fl">${findingsHtml(s.findings)}</ul></div>`;
+  }
+  html += `<div class="proof"><div><b>Proof Link</b><span>A shareable record of this check. Audit trail ${c.audit_ok ? "intact" : "broken"}.</span></div>
+    <a class="btn secondary sm" href="/proof/${esc(c.token)}" target="_blank" rel="noopener">Open proof</a></div></div>`;
+  $("out").innerHTML = html;
+  if (innerWidth < 1000) $("out").scrollIntoView({behavior: "smooth", block: "start"});
+}
+async function refresh(c) { render(c); await Promise.all([loadHistory(), loadSuppliers()]); }
+
+/* ---------- actions ---------- */
+const openCheck = id => run(null, async () => { render(await api("/api/checks/" + id)); });
+const confirmCheck = (id, b) => run(b, async () => refresh(await post(`/api/checks/${id}/confirm`, {
+  method: $("cMethod").value, confirmed_by: $("cBy").value, note: $("cNote").value, add_to_approved: $("cAdd").checked })));
+const rejectCheck = (id, b) => run(b, async () => refresh(await post(`/api/checks/${id}/reject`)));
+const useVerified = (id, b) => run(b, async () => refresh(await post(`/api/checks/${id}/use-verified`)));
+const settle = (id, b) => run(b, async () => refresh(await post(`/api/checks/${id}/settle`, {txid: $("tx").value, network: $("txNet").value})));
+
+async function ensureSamples() {
+  if (samples) return;
+  const r = await post("/api/demo/seed");
+  samples = r.samples; await loadSuppliers(); $("supplier").value = String(r.supplier_id);
+}
+async function loadSample(k) {
+  await ensureSamples();
+  $("text").value = samples[k].text; $("sender").value = samples[k].sender; $("signed").value = "";
+}
+function openDrawer(open) {
+  $("drawer").classList.toggle("open", open); $("scrim").hidden = !open; $("drawer").setAttribute("aria-hidden", String(!open));
+}
+
+$("demoBtn").onclick = e => run(e.currentTarget, async () => { await ensureSamples(); await loadSample("a"); toast("Demo supplier loaded. The genuine invoice is ready."); });
+$("loadA").onclick = e => run(e.currentTarget, () => loadSample("a"));
+$("loadB").onclick = e => run(e.currentTarget, () => loadSample("b"));
+$("suppBtn").onclick = () => openDrawer(true);
+$("closeDrawer").onclick = $("scrim").onclick = () => openDrawer(false);
+document.addEventListener("keydown", e => { if (e.key === "Escape") openDrawer(false); });
+$("file").onchange = () => { $("fname").textContent = $("file").files[0] ? $("file").files[0].name : "Or upload a PDF"; };
+$("addBtn").onclick = e => run(e.currentTarget, async () => {
+  await post("/api/suppliers", {name: $("sName").value, destination: $("sWallet").value, known_domain: $("sDomain").value, with_demo_key: $("sKey").checked});
+  $("sName").value = $("sWallet").value = $("sDomain").value = ""; await loadSuppliers(); toast("Supplier saved.");
+});
+$("signBtn").onclick = e => run(e.currentTarget, async () => {
+  if (!$("supplier").value) throw new Error("Choose the supplier first (one with a demo signing key).");
+  const r = await post("/api/demo/sign", {supplier_id: Number($("supplier").value), text: $("text").value});
+  $("signed").value = JSON.stringify({message: r.message, signature: r.signature}, null, 2); $("adv").open = true;
+  toast("Signed as the supplier. Now run the check.");
+});
+$("tamperBtn").onclick = () => {
+  try {
+    const o = JSON.parse($("signed").value), d = o.message.destination;
+    o.message.destination = d.slice(0, -1) + (d.slice(-1) === "A" ? "B" : "A");
+    $("signed").value = JSON.stringify(o, null, 2); toast("Destination changed after signing.");
+  } catch (e) { toast("Sign as the supplier first.", true); }
+};
+$("runBtn").onclick = e => run(e.currentTarget, async () => {
+  const fd = new FormData();
+  fd.append("supplier_id", $("supplier").value); fd.append("sender", $("sender").value);
+  fd.append("text", $("text").value); fd.append("signed_json", $("signed").value);
+  if ($("file").files[0]) fd.append("file", $("file").files[0]);
+  await refresh(await api("/api/analyze", {method: "POST", body: fd}));
+});
+
+run(null, async () => { await Promise.all([loadHealth(), loadSuppliers(), loadHistory()]); });
+</script>
+</body>
+</html>
