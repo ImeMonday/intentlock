@@ -195,4 +195,4 @@ IntentLock is a decision-support and audit tool. It does not guarantee that a pa
 
 ## Team
 
-[Team name] | [Member names]
+Imeobong Tom  and Edidiong Moses
