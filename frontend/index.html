@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IntentLock · Address Guard</title>
+<meta name="description" content="Verify the payment instruction before the money moves. Check USDT addresses, invoices and supplier records in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2319C3B1'/%3E%3Cpath d='M16 6l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9z' fill='%230A1424'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0A1424;
+  --panel: #13243B;
+  --panel2: #0F1C2E;
+  --line: #243E5E;
+  --text: #ECF1F7;
+  --muted: #9AAEC4;
+  --faint: #6D839E;
+  --teal: #19C3B1;
+  --teal-dim: rgba(25,195,177,.12);
+  --amber: #F5A524;
+  --amber-dim: rgba(245,165,36,.12);
+  --orange: #FF8A4C;
+  --red: #FF6B5B;
+  --red-dim: rgba(255,107,91,.12);
+  --blue: #5B8CFF;
+  --sans: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", Consolas, monospace;
+  --radius: 14px;
+  --shadow: 0 8px 32px rgba(0,0,0,.28);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --ink: #F4F7FB;
+    --panel: #FFFFFF;
+    --panel2: #F0F4F9;
+    --line: #D5DEE9;
+    --text: #0A1424;
+    --muted: #5A6B82;
+    --faint: #8896A8;
+    --teal-dim: rgba(25,195,177,.14);
+    --amber-dim: rgba(245,165,36,.16);
+    --red-dim: rgba(255,107,91,.12);
+    --shadow: 0 8px 28px rgba(10,20,36,.08);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 420px at 85% -10%, rgba(25,195,177,.14), transparent 60%),
+    radial-gradient(700px 360px at -10% 30%, rgba(91,140,255,.08), transparent 55%),
+    var(--ink);
+  color: var(--text);
+  font: 15px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+h1,h2,h3,p { margin: 0; }
+a { color: var(--teal); }
+.mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+
+.top {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.top-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -.01em;
+}
+.logo svg { flex: none; }
+.tagline { color: var(--muted); font-size: 13px; margin-left: 4px; }
+.top-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 64px; }
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.35fr .9fr;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+}
+.hero-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+}
+.hero h1 {
+  font-size: clamp(22px, 3.2vw, 28px);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+.hero .lead {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 14.5px;
+  max-width: 52ch;
+}
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.stat {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.stat b { display: block; font-size: 18px; font-weight: 600; color: var(--teal); }
+.stat span { font-size: 12.5px; color: var(--muted); }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.card h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card h2 .step {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--teal-dim);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 12px 0 5px;
+}
+label:first-of-type { margin-top: 0; }
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel2);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-dim);
+}
+textarea {
+  font-family: var(--mono);
+  min-height: 72px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; min-width: 0; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  padding: 9px 14px;
+  transition: background .12s, border-color .12s, transform .08s;
+}
+button:hover { border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
+button:active { transform: translateY(1px); }
+button.p {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #0A1424;
+  font-weight: 600;
+}
+button.p:hover { filter: brightness(1.06); }
+button.sm { padding: 5px 10px; font-size: 12.5px; }
+button.ghost { background: transparent; }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+.chips button {
+  font-size: 12.5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--panel2);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.tabs button.active {
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+.verdict {
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-left-width: 5px;
+}
+.verdict .ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+.verdict b { font-size: 17px; font-weight: 600; display: block; }
+.verdict span { color: var(--muted); font-size: 13.5px; display: block; margin-top: 3px; }
+.verdict.ok { background: var(--teal-dim); border-color: var(--teal); }
+.verdict.ok .ic { background: rgba(25,195,177,.2); color: var(--teal); }
+.verdict.warn { background: var(--amber-dim); border-color: var(--amber); }
+.verdict.warn .ic { background: rgba(245,165,36,.2); color: var(--amber); }
+.verdict.bad { background: var(--red-dim); border-color: var(--red); }
+.verdict.bad .ic { background: rgba(255,107,91,.2); color: var(--red); }
+
+ul.f { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 0; }
+ul.f li {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  align-items: flex-start;
+}
+.tag {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: 3px 7px;
+  border-radius: 6px;
+  margin-top: 1px;
+}
+.t-crit { background: var(--red-dim); color: var(--red); }
+.t-high { background: var(--amber-dim); color: var(--amber); }
+.t-med { background: rgba(255,138,76,.14); color: var(--orange); }
+.t-ok { background: var(--teal-dim); color: var(--teal); }
+.t-info { background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+
+.cmp {
+  margin-top: 14px;
+  font: 13px/1.7 var(--mono);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  word-break: break-all;
+}
+.cmp small {
+  display: block;
+  font: 11.5px var(--sans);
+  color: var(--muted);
+  margin-top: 8px;
+}
+.cmp small:first-child { margin-top: 0; }
+mark {
+  background: var(--red-dim);
+  color: var(--red);
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.save-box {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.save-box label.c {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--text);
+  font-size: 13.5px;
+  margin: 0;
+  cursor: pointer;
+}
+.save-box input[type=checkbox] {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--teal);
+}
+
+.sup {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--panel2);
+}
+.sup h3 {
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.sup .meta { font-size: 12px; color: var(--faint); font-weight: 400; }
+.ad {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font: 12.5px var(--mono);
+  padding: 5px 0;
+  word-break: break-all;
+}
+.net {
+  font: 600 11px var(--sans);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 7px;
+  margin-right: 6px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13.5px;
+  padding: 8px 0;
+}
+.foot {
+  color: var(--faint);
+  font-size: 12.5px;
+  margin-top: 22px;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.history {
+  margin-top: 16px;
+}
+.hist-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  align-items: flex-start;
+}
+.hist-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex: none;
+}
+.hist-item .dot.ok { background: var(--teal); }
+.hist-item .dot.warn { background: var(--amber); }
+.hist-item .dot.bad { background: var(--red); }
+
+.banner {
+  background: var(--teal-dim);
+  border: 1px solid color-mix(in srgb, var(--teal) 40%, var(--line));
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+.banner strong { color: var(--teal); }
+
+.hidden { display: none !important; }
+
+details.advanced {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 12px;
+  background: var(--panel2);
+}
+details.advanced summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+  list-style: none;
+}
+details.advanced summary::-webkit-details-marker { display: none; }
+details.advanced[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transition: .25s ease;
+  z-index: 50;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="top-inner">
+    <div class="logo">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#19C3B1"/>
+        <path d="M16 6l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9z" fill="#0A1424"/>
+      </svg>
+      <span>IntentLock</span>
+      <span class="tagline">Address Guard</span>
+    </div>
+    <div class="top-actions">
+      <button class="sm ghost" id="btnExportAll" title="Export vault + recent checks">Export data</button>
+      <button class="sm ghost" id="btnAbout">About</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-card">
+      <h1>Verify the payment instruction before the money moves.</h1>
+      <p class="lead">
+        Payment-redirection fraud changes only one detail. IntentLock checks the destination against
+        your verified supplier record, flags lookalikes and pressure language, and keeps the evidence in this browser.
+      </p>
+      <div class="stats">
+        <div class="stat"><b>Client-side</b><span>Vault stays on this device</span></div>
+        <div class="stat"><b>20+ checks</b><span>Format, network, history, language</span></div>
+        <div class="stat"><b>No custody</b><span>You pay from your own wallet</span></div>
+        <div class="stat"><b>Shareable</b><span>Export a local proof of check</span></div>
+      </div>
+    </div>
+    <div class="hero-card">
+      <h2 style="margin:0 0 10px;font-size:15px">Quick demo</h2>
+      <p class="muted" style="font-size:13.5px;margin-bottom:12px">
+        Load the demo supplier, then try a genuine vs tampered invoice. No backend needed.
+      </p>
+      <div class="chips" id="quickDemos"></div>
+      <p class="faint" style="font-size:12.5px;margin-top:14px;line-height:1.45">
+        Built for the Cleva × Tether Future of Payments Hackathon. Full product includes invoice AI reading,
+        EIP-712 supplier signatures, on-chain settlement and hash-chained Proof Links.
+      </p>
+    </div>
+  </div>
+
+  <div class="banner" id="privacyBanner">
+    <strong>Privacy first.</strong> Everything runs in your browser. The supplier vault and check history
+    are stored only in localStorage on this device. Nothing is sent to a server.
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: Check -->
+    <section class="card">
+      <h2><span class="step">1</span> Check before sending</h2>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="active" data-mode="address" id="tabAddr">Address only</button>
+        <button type="button" data-mode="invoice" id="tabInv">Invoice / message</button>
+      </div>
+
+      <div id="modeAddress">
+        <div class="row">
+          <div>
+            <label for="sup">Supplier</label>
+            <select id="sup"></select>
+          </div>
+          <div>
+            <label for="net">Network you intend to send on</label>
+            <select id="net"></select>
+          </div>
+        </div>
+        <label for="addr">Destination address (from the invoice or message)</label>
+        <textarea id="addr" spellcheck="false" placeholder="Paste a USDT address…"></textarea>
+      </div>
+
+      <div id="modeInvoice" class="hidden">
+        <label for="sender">Sender email (optional)</label>
+        <input id="sender" placeholder="billing@supplier.com" autocomplete="off">
+        <label for="invoice">Paste invoice or message text</label>
+        <textarea id="invoice" spellcheck="false" placeholder="From: Supplier Ltd <billing@…>&#10;Invoice No: INV-2026-001&#10;…&#10;USDT wallet: T…&#10;Network: TRON" style="min-height:140px"></textarea>
+        <p class="faint" style="font-size:12.5px;margin-top:6px">
+          Client-side extraction looks for wallet addresses, network keywords, amounts, invoice numbers and change/urgency phrases.
+        </p>
+      </div>
+
+      <div class="panel-actions">
+        <button class="p" id="go">Run check</button>
+        <button class="sm" id="clr">Clear</button>
+      </div>
+
+      <label style="margin-top:16px">Demo scenarios</label>
+      <div class="chips" id="demos"></div>
+
+      <div id="out"></div>
+    </section>
+
+    <!-- RIGHT: Vault + history -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <h2><span class="step">2</span> Supplier vault</h2>
+        <div id="vault"></div>
+        <div class="save-box">
+          <label>Add a verified supplier address</label>
+          <input id="vn" placeholder="Supplier name">
+          <div class="row" style="margin-top:8px">
+            <select id="vnet"></select>
+            <input id="vdomain" placeholder="Known email domain (optional)">
+          </div>
+          <textarea id="va" spellcheck="false" placeholder="Verified USDT address" style="margin-top:8px;min-height:48px"></textarea>
+          <div id="vmsg" class="empty"></div>
+          <div class="panel-actions">
+            <button id="vadd">Save to vault</button>
+            <button class="sm" id="vexp">Export JSON</button>
+            <button class="sm" id="vreset">Clear vault</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Recent checks</h2>
+        <div id="history" class="history">
+          <p class="empty">No checks yet this session.</p>
+        </div>
+        <div class="panel-actions">
+          <button class="sm" id="histClear">Clear history</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <p class="foot">
+    IntentLock is a decision-support tool. It checks format, network, history and message language.
+    It cannot prove that an address belongs to the supplier — confirm new addresses through a call or
+    another channel you already trust. No funds or keys are ever held by this page.
+  </p>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ========== Crypto helpers (self-contained, no deps) ========== */
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const sha256 = (() => {
+  const pr = [];
+  for (let n = 2; pr.length < 64; n++) if (pr.every(p => n % p)) pr.push(n);
+  const fr = x => Math.floor((x - Math.floor(x)) * 4294967296) >>> 0;
+  const K = pr.map(p => fr(Math.cbrt(p)));
+  const H0 = pr.slice(0, 8).map(p => fr(Math.sqrt(p)));
+  return b => {
+    const l = b.length, n = ((l + 9 + 63) >> 6) << 6, m = new Uint8Array(n);
+    m.set(b); m[l] = 128;
+    const dv = new DataView(m.buffer);
+    dv.setUint32(n - 4, (l * 8) >>> 0);
+    dv.setUint32(n - 8, Math.floor(l / 536870912));
+    const h = H0.slice(), w = new Uint32Array(64);
+    const r = (x, k) => (x >>> k) | (x << (32 - k));
+    for (let o = 0; o < n; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + 4 * i);
+      for (let i = 16; i < 64; i++) {
+        const a = w[i - 15], c = w[i - 2];
+        w[i] = (w[i - 16] + (r(a, 7) ^ r(a, 18) ^ (a >>> 3)) + w[i - 7] + (r(c, 17) ^ r(c, 19) ^ (c >>> 10))) | 0;
+      }
+      let [a, b2, c, d, e, f2, g, hh] = h;
+      for (let i = 0; i < 64; i++) {
+        const t1 = (hh + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f2) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b2) ^ (a & c) ^ (b2 & c))) | 0;
+        hh = g; g = f2; f2 = e; e = (d + t1) | 0; d = c; c = b2; b2 = a; a = (t1 + t2) | 0;
+      }
+      [a, b2, c, d, e, f2, g, hh].forEach((v, i) => h[i] = (h[i] + v) | 0);
+    }
+    const out = new Uint8Array(32), ov = new DataView(out.buffer);
+    h.forEach((v, i) => ov.setUint32(4 * i, v >>> 0));
+    return out;
+  };
+})();
+const keccak256 = (() => {
+  const M = (1n << 64n) - 1n, RC = [], ROT = Array(25).fill(0);
+  let R = 1;
+  for (let t = 0; t < 24; t++) {
+    let c = 0n;
+    for (let j = 0; j < 7; j++) {
+      R = ((R << 1) ^ ((R >> 7) * 113)) & 255;
+      if (R & 2) c |= 1n << BigInt((1 << j) - 1);
+    }
+    RC.push(c);
+  }
+  let x = 1, y = 0;
+  for (let t = 0; t < 24; t++) {
+    ROT[x + 5 * y] = ((t + 1) * (t + 2) / 2) % 64;
+    [x, y] = [y, (2 * x + 3 * y) % 5];
+  }
+  const rl = (v, n) => n ? ((v << BigInt(n)) | (v >> BigInt(64 - n))) & M : v;
+  return b => {
+    const A = Array(25).fill(0n), n = (Math.floor(b.length / 136) + 1) * 136, p = new Uint8Array(n);
+    p.set(b); p[b.length] ^= 1; p[n - 1] ^= 128;
+    for (let o = 0; o < n; o += 136) {
+      for (let i = 0; i < 17; i++) {
+        let v = 0n;
+        for (let k = 7; k >= 0; k--) v = (v << 8n) | BigInt(p[o + 8 * i + k]);
+        A[i] ^= v;
+      }
+      for (let r = 0; r < 24; r++) {
+        const C = [0,1,2,3,4].map(i => A[i] ^ A[i+5] ^ A[i+10] ^ A[i+15] ^ A[i+20]);
+        for (let i = 0; i < 5; i++) {
+          const D = C[(i + 4) % 5] ^ rl(C[(i + 1) % 5], 1);
+          for (let j = 0; j < 25; j += 5) A[i + j] ^= D;
+        }
+        const B = Array(25).fill(0n);
+        for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++)
+          B[j + 5 * ((2 * i + 3 * j) % 5)] = rl(A[i + 5 * j], ROT[i + 5 * j]);
+        for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++)
+          A[i + 5 * j] = B[i + 5 * j] ^ (~B[(i + 1) % 5 + 5 * j] & M & B[(i + 2) % 5 + 5 * j]);
+        A[0] ^= RC[r];
+      }
+    }
+    const out = new Uint8Array(32);
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 8; k++)
+      out[8 * i + k] = Number((A[i] >> BigInt(8 * k)) & 255n);
+    return out;
+  };
+})();
+const hex = u => [...u].map(v => v.toString(16).padStart(2, '0')).join('');
+function b58dec(s) {
+  let n = 0n;
+  for (const c of s) {
+    const i = B58.indexOf(c);
+    if (i < 0) return null;
+    n = n * 58n + BigInt(i);
+  }
+  const a = [];
+  while (n > 0n) { a.unshift(Number(n & 255n)); n >>= 8n; }
+  for (const c of s) { if (c !== '1') break; a.unshift(0); }
+  return Uint8Array.from(a);
+}
+function tronOk(a) {
+  if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a)) return 'format';
+  const d = b58dec(a);
+  if (!d || d.length !== 25 || d[0] !== 0x41) return 'format';
+  const c = sha256(sha256(d.slice(0, 21)));
+  return c.slice(0, 4).every((v, i) => v === d[21 + i]) ? 'ok' : 'checksum';
+}
+function eip55(a) {
+  const l = a.slice(2).toLowerCase();
+  const h = hex(keccak256(new TextEncoder().encode(l)));
+  return '0x' + [...l].map((c, i) => parseInt(h[i], 16) >= 8 ? c.toUpperCase() : c).join('');
+}
+function evmState(a) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) return 'format';
+  const b = a.slice(2);
+  if (b === b.toLowerCase() || b === b.toUpperCase()) return 'nocase';
+  return eip55(a) === a ? 'ok' : 'checksum';
+}
+
+/* ========== Domain data ========== */
+const D = {
+  good: 'TKMX5M7FXDYCLxP2T85SsRoRQHmf9Titfc',
+  fake: 'TKMX5M7FXDYCLxP2T4VrdtugWAVv51itfc',
+  typo: 'TKMX5M7FXDYCAxP2T85SsRoRQHmf9Titfc',
+  evm: '0x8584602bff1FaBDB5C79dF5087A1F4DfEB8a1d83',
+  changed: 'TYS7GgLK7YZBFTK1NoADinmExDR3R1yLL5'
+};
+const NETS = {
+  tron: { n: 'TRON (TRC-20)', f: 'tron' },
+  eth: { n: 'Ethereum (ERC-20)', f: 'evm' },
+  bsc: { n: 'BNB Chain (BEP-20)', f: 'evm' },
+  poly: { n: 'Polygon', f: 'evm' },
+  arb: { n: 'Arbitrum', f: 'evm' },
+  base: { n: 'Base', f: 'evm' }
+};
+const CONTRACTS = {
+  tron: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+  eth: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+  bsc: '0x55d398326f99059fF775485246999027B3197955'
+};
+const URGENCY = ['urgent', 'urgently', 'immediately', 'asap', 'right away', 'do not call', "don't call",
+  'dont call', 'confidential', 'keep this between', 'in a meeting', 'unavailable by phone'];
+const CHANGE = ['new account', 'new bank', 'new wallet', 'changed our', 'we have changed', 'updated bank',
+  'updated payment', 'updated wallet', 'change of bank', 'change of wallet',
+  'do not use the old', 'do not use the previous', 'no longer use', 'no longer valid'];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const same = (a, b) => a.startsWith('0x') && b.startsWith('0x') ? a.toLowerCase() === b.toLowerCase() : a === b;
+const fam = a => /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a) ? 'tron'
+  : /^0x/i.test(a) ? 'evm'
+  : /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,60}$/.test(a) ? 'btc'
+  : /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a) ? 'sol' : 'unknown';
+const FN = { tron: 'TRON', evm: 'Ethereum-style (0x)', btc: 'Bitcoin', sol: 'Solana', unknown: 'unrecognised' };
+
+function lookalike(a, b) {
+  if (a.length !== b.length || same(a, b)) return false;
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  let p = 0, s = 0, d = 0;
+  while (x[p] === y[p]) p++;
+  while (x[x.length - 1 - s] === y[y.length - 1 - s]) s++;
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) d++;
+  return (p >= 5 && s >= 4) || d <= 3;
+}
+function levenshtein(a, b) {
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++)
+      cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] !== b[j - 1])));
+    prev.splice(0, prev.length, ...cur);
+  }
+  return prev[b.length];
+}
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ========== State ========== */
+let vault = [];
+let history = [];
+let mode = 'address';
+
+const load = () => {
+  try { vault = JSON.parse(localStorage.getItem('intentlock.vault') || '[]'); } catch { vault = []; }
+  try { history = JSON.parse(localStorage.getItem('intentlock.history') || '[]'); } catch { history = []; }
+};
+const storeVault = () => { try { localStorage.setItem('intentlock.vault', JSON.stringify(vault)); } catch {} };
+const storeHist = () => { try { localStorage.setItem('intentlock.history', JSON.stringify(history.slice(0, 40))); } catch {} };
+
+/* ========== Invoice extraction (client-side) ========== */
+function extractInvoice(text, senderEmail) {
+  const raw = text || '';
+  const low = raw.toLowerCase();
+  const out = {
+    destination: null,
+    network: null,
+    amount: null,
+    currency: null,
+    invoice_number: null,
+    supplier_name: null,
+    sender_domain: null,
+    change_hits: [],
+    urgency_hits: []
+  };
+
+  // Addresses
+  const tron = raw.match(/\bT[1-9A-HJ-NP-Za-km-z]{33}\b/);
+  const evm = raw.match(/\b0x[0-9a-fA-F]{40}\b/);
+  if (tron) { out.destination = tron[0]; out.network = 'tron'; }
+  else if (evm) { out.destination = evm[0]; out.network = 'eth'; }
+
+  // Network keywords
+  if (/\b(tron|trc-?20|trc20)\b/i.test(raw)) out.network = out.network || 'tron';
+  if (/\b(ethereum|erc-?20|erc20|eth)\b/i.test(raw)) out.network = out.network || 'eth';
+  if (/\b(bnb|bsc|bep-?20)\b/i.test(raw)) out.network = out.network || 'bsc';
+  if (/\bpolygon\b/i.test(raw)) out.network = out.network || 'poly';
+  if (/\barbitrum\b/i.test(raw)) out.network = out.network || 'arb';
+  if (/\bbase\b/i.test(raw) && /network|chain|usdt/i.test(raw)) out.network = out.network || 'base';
+
+  // Amount
+  const amt = raw.match(/(?:total|amount|pay|payment|due)[^\d]{0,20}([\d,]+\.?\d*)\s*(USDT|USD|usdt|usd)?/i)
+    || raw.match(/([\d,]+\.?\d*)\s*(USDT|USD)\b/i);
+  if (amt) {
+    out.amount = parseFloat(amt[1].replace(/,/g, ''));
+    out.currency = (amt[2] || 'USDT').toUpperCase();
+  }
+
+  // Invoice number
+  const inv = raw.match(/(?:invoice\s*(?:no|number|#)?|inv)[:\s#-]*([A-Z0-9][A-Z0-9\-\/]{2,})/i);
+  if (inv) out.invoice_number = inv[1];
+
+  // Supplier name from From: line
+  const from = raw.match(/^From:\s*(.+?)(?:\s*<|$)/im);
+  if (from) out.supplier_name = from[1].trim().replace(/["']/g, '');
+
+  // Sender domain
+  const email = (senderEmail || '').trim().toLowerCase()
+    || (raw.match(/[\w.+-]+@([\w.-]+\.[a-z]{2,})/i) || [])[0] || '';
+  if (email.includes('@')) out.sender_domain = email.split('@').pop().toLowerCase();
+
+  // Language
+  out.change_hits = CHANGE.filter(p => low.includes(p));
+  out.urgency_hits = URGENCY.filter(p => low.includes(p));
+
+  return out;
+}
+
+/* ========== Core analysis ========== */
+function analyze({ addr, net, supId, text, sender, extracted }) {
+  const F = [];
+  const add = (sev, t, nosave = false, id = '') => F.push({ sev, t, nosave, id });
+  const want = NETS[net]?.f;
+  const got = fam(addr);
+  let ref = null, exact = false;
+
+  // Address validity & network
+  if (!addr) {
+    add('high', 'No payment destination found in the input.', true, 'NO_DESTINATION');
+  } else if (got !== want) {
+    add('crit',
+      got === 'unknown'
+        ? 'This does not look like any known wallet address. Do not send.'
+        : `Wrong chain: this is a ${FN[got]} address, but you chose ${NETS[net].n}. USDT sent this way can be lost permanently.`,
+      1, 'NETWORK_MISMATCH');
+  } else if (got === 'tron') {
+    const s = tronOk(addr);
+    add(s === 'ok' ? 'ok' : 'crit',
+      s === 'ok' ? 'Valid TRON address (checksum passes).'
+        : 'Checksum failed: a character is wrong or missing. Funds sent to a mistyped address cannot be recovered.',
+      s !== 'ok', s === 'ok' ? 'ADDR_OK' : 'INVALID_ADDRESS');
+  } else {
+    const s = evmState(addr);
+    if (s === 'ok') add('ok', 'Valid 0x address (EIP-55 checksum passes).', false, 'ADDR_OK');
+    else if (s === 'nocase') add('high', 'The address has no checksum capitals, so a typo would not be caught. Copy it again from the source or confirm it with the supplier.', false, 'NO_CHECKSUM');
+    else add('crit', s === 'format'
+      ? 'Not a valid 0x address: it must be 0x followed by 40 hex characters.'
+      : 'EIP-55 checksum failed: a character is wrong. Do not send.',
+      1, 'INVALID_ADDRESS');
+    if (s !== 'format')
+      add('info', `0x addresses are identical on Ethereum, BNB Chain, Polygon, Arbitrum and Base, so the address alone cannot prove the chain. Confirm that the supplier's wallet is on ${NETS[net].n}.`, false, 'CHAIN_NOTE');
+  }
+
+  const bad = F.some(f => f.nosave);
+
+  if (!bad && addr) {
+    const c = CONTRACTS[net];
+    if (c && same(addr, c))
+      add('crit', 'This is the USDT token contract itself. Anything sent here is burned.', 1, 'TOKEN_CONTRACT');
+
+    const all = [];
+    vault.forEach(s => s.addrs.forEach(x => all.push({ s, x })));
+    const hit = all.find(e => same(e.x.addr, addr));
+
+    if (hit) {
+      if (supId && hit.s.id !== supId)
+        add('crit', `This address is saved for a different supplier (${hit.s.name}), not the one you selected.`, false, 'WRONG_SUPPLIER');
+      else if (hit.x.net !== net)
+        add('high', `This address is saved as ${NETS[hit.x.net].n}, but you chose ${NETS[net].n}. Check the network.`, false, 'SAVED_NET_MISMATCH');
+      else {
+        exact = true;
+        add('ok', `Matches ${hit.s.name}'s verified address, saved ${new Date(hit.x.added).toLocaleDateString()}.`, false, 'MATCH');
+      }
+    } else {
+      const lk = all.find(e => lookalike(addr, e.x.addr));
+      if (lk) {
+        ref = lk.x.addr;
+        add('crit', `Looks almost identical to ${lk.s.name}'s saved address but is not the same. This is the pattern used in address-poisoning attacks. Do not copy it from your transaction history.`, false, 'LOOKALIKE_ADDR');
+      }
+      if (supId) {
+        const s = vault.find(v => v.id === supId);
+        const cand = s && (s.addrs.find(x => x.net === net) || s.addrs[0]);
+        if (cand) {
+          ref = ref || cand.addr;
+          add('crit', `Destination changed: this address is not one of ${s.name}'s approved addresses. Confirm by phone or in person before paying.`, false, 'DESTINATION_CHANGED');
+        } else {
+          add('high', `${s ? s.name : 'This supplier'} has no saved address yet. Verify this one with them and save it.`, false, 'NO_APPROVED');
+        }
+      } else if (!lk) {
+        add('high', 'No history: this address is not in your vault. Verify it with the supplier before sending.', false, 'NEW_PAYEE');
+      }
+    }
+
+    // Domain checks when supplier selected
+    if (supId && extracted?.sender_domain) {
+      const s = vault.find(v => v.id === supId);
+      const kd = (s?.domain || '').toLowerCase();
+      const sd = extracted.sender_domain.toLowerCase();
+      if (kd) {
+        if (sd !== kd && !sd.endsWith('.' + kd)) {
+          if (levenshtein(sd, kd) <= 2)
+            add('high', `Sender domain ${sd} is almost identical to the known domain ${kd}. Common impersonation pattern.`, false, 'LOOKALIKE_DOMAIN');
+          else
+            add('med', `Sender domain ${sd} differs from the known domain ${kd}.`, false, 'SENDER_DOMAIN_DIFFERS');
+        }
+      }
+    }
+
+    // Message language
+    if (extracted) {
+      if (extracted.change_hits?.length)
+        add('high', 'Message announces a change of payment details. Phrases: ' + extracted.change_hits.slice(0, 3).join(', ') + '.', false, 'CHANGE_ANNOUNCED');
+      if (extracted.urgency_hits?.length)
+        add('med', 'Pressure or secrecy language detected. Phrases: ' + extracted.urgency_hits.slice(0, 3).join(', ') + '.', false, 'URGENCY_PRESSURE');
+      if (extracted.currency && !['USDT', 'USD'].includes(extracted.currency))
+        add('med', `Unexpected currency: ${extracted.currency}.`, false, 'CURRENCY');
+      if (extracted.amount != null && extracted.amount < 10 && extracted.currency === 'USDT')
+        add('info', "Below Cleva's typical minimum deposit ($10). Confirm before sending small amounts.", false, 'CLEVA_MIN');
+    }
+  }
+
+  const crit = F.some(f => f.sev === 'crit');
+  const warn = F.some(f => f.sev === 'high' || f.sev === 'med');
+  return { F, ref, exact, crit, warn, bad, got, extracted };
+}
+
+function diff(a, b) {
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  if (a.length === b.length) {
+    let o = '';
+    for (let i = 0; i < a.length; i++)
+      o += x[i] === y[i] ? esc(a[i]) : `<mark>${esc(a[i])}</mark>`;
+    return o;
+  }
+  let p = 0, s = 0;
+  while (x[p] === y[p]) p++;
+  while (x[x.length - 1 - s] === y[y.length - 1 - s] && s < Math.min(a.length, b.length) - p) s++;
+  return esc(a.slice(0, p)) + '<mark>' + esc(a.slice(p, a.length - s)) + '</mark>' + esc(a.slice(a.length - s));
+}
+
+function render(r, addr, net, supId) {
+  const v = r.crit
+    ? ['bad', '⛔', 'Do not send', 'Fix the problems below first. No approval is given.']
+    : r.warn
+      ? ['warn', '⚠️', 'Verify first', 'Approval is withheld until you confirm this address with the supplier out-of-band.']
+      : ['ok', '✅', 'Safe to send', 'The address is valid, on the right network, and matches the verified record.'];
+
+  let h = `<div class="verdict ${v[0]}"><div class="ic">${v[1]}</div><div><b>${v[2]}</b><span>${v[3]}</span></div></div>`;
+
+  if (r.extracted && (r.extracted.amount != null || r.extracted.invoice_number || r.extracted.destination)) {
+    h += `<div class="cmp" style="margin-top:12px"><small>Extracted from message</small>`;
+    const bits = [];
+    if (r.extracted.invoice_number) bits.push(`Invoice: ${esc(r.extracted.invoice_number)}`);
+    if (r.extracted.amount != null) bits.push(`Amount: ${esc(String(r.extracted.amount))} ${esc(r.extracted.currency || '')}`);
+    if (r.extracted.destination) bits.push(`Wallet: ${esc(r.extracted.destination)}`);
+    if (r.extracted.sender_domain) bits.push(`Domain: ${esc(r.extracted.sender_domain)}`);
+    h += bits.join(' · ') + '</div>';
+  }
+
+  h += '<ul class="f">';
+  r.F.forEach(f => {
+    const tag = { crit: 'CRITICAL', high: 'VERIFY', med: 'MEDIUM', ok: 'PASS', info: 'NOTE' }[f.sev];
+    const cls = { crit: 't-crit', high: 't-high', med: 't-med', ok: 't-ok', info: 't-info' }[f.sev];
+    h += `<li><span class="tag ${cls}">${tag}</span><span>${esc(f.t)}</span></li>`;
+  });
+  h += '</ul>';
+
+  if (r.ref) {
+    h += `<div class="cmp"><small>Address you pasted (differences marked)</small>${diff(addr, r.ref)}
+      <small>Verified address on file</small>${diff(r.ref, addr)}
+      <div style="margin-top:10px"><button class="sm" id="cp">Copy verified address</button>
+      <button class="sm p" id="useVerified" style="margin-left:6px">Use verified address</button></div></div>`;
+  }
+
+  if (!r.exact && !r.bad && !r.crit) {
+    h += `<div class="save-box">
+      <label class="c"><input type="checkbox" id="ck">
+        <span>I confirmed this address with the supplier through a call or channel I already trust.</span></label>
+      <input id="sn" placeholder="Supplier name" style="margin-top:8px" value="${esc((vault.find(v => v.id === supId) || {}).name || '')}">
+      <div style="margin-top:8px"><button class="p" id="sv" disabled>Save as verified</button>
+      <button class="sm" id="exportProof" style="margin-left:6px">Export local proof</button></div>
+    </div>`;
+  } else if (r.exact || (!r.crit && !r.warn)) {
+    h += `<div class="panel-actions"><button class="sm" id="exportProof">Export local proof</button></div>`;
+  }
+
+  $('out').innerHTML = h;
+
+  if ($('cp')) $('cp').onclick = () => {
+    navigator.clipboard?.writeText(r.ref);
+    toast('Verified address copied');
+    $('cp').textContent = 'Copied';
+  };
+  if ($('useVerified')) $('useVerified').onclick = () => {
+    $('addr').value = r.ref;
+    if (mode === 'invoice') {
+      // keep invoice text but force address mode result
+    }
+    mode = 'address';
+    setModeUI();
+    $('net').value = net;
+    check();
+    toast('Switched to verified address');
+  };
+  if ($('ck')) {
+    $('ck').onchange = () => { $('sv').disabled = !$('ck').checked; };
+    $('sv').onclick = () => {
+      if (saveAddr($('sn').value, net, addr)) {
+        drawVault();
+        check();
+        toast('Saved to vault');
+      }
+    };
+  }
+  if ($('exportProof')) $('exportProof').onclick = () => exportProof(r, addr, net, supId);
+
+  // History entry
+  pushHistory(r, addr, net, supId);
+}
+
+function pushHistory(r, addr, net, supId) {
+  const status = r.crit ? 'bad' : r.warn ? 'warn' : 'ok';
+  const label = r.crit ? 'Withheld' : r.warn ? 'Verify first' : 'Approved';
+  const name = (vault.find(v => v.id === supId) || {}).name || '—';
+  history.unshift({
+    ts: Date.now(),
+    status,
+    label,
+    addr: addr || '',
+    net,
+    supplier: name,
+    findings: r.F.filter(f => f.sev === 'crit' || f.sev === 'high' || f.sev === 'med').map(f => f.t)
+  });
+  history = history.slice(0, 40);
+  storeHist();
+  drawHistory();
+}
+
+function exportProof(r, addr, net, supId) {
+  const status = r.crit ? 'withheld' : r.warn ? 'needs_verification' : 'approved';
+  const proof = {
+    product: 'IntentLock Address Guard',
+    version: '2.0-client',
+    generated_at: new Date().toISOString(),
+    status,
+    network: NETS[net]?.n || net,
+    destination: addr,
+    supplier: (vault.find(v => v.id === supId) || {}).name || null,
+    findings: r.F.map(f => ({ severity: f.sev, detail: f.t, id: f.id })),
+    extracted: r.extracted || null,
+    note: 'This is a local, client-side check record. It is not cryptographically chained to a server audit log. Confirm new addresses out-of-band.'
+  };
+  const blob = new Blob([JSON.stringify(proof, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `intentlock-proof-${Date.now()}.json`;
+  a.click();
+  toast('Local proof exported');
+}
+
+function saveAddr(name, net, addr) {
+  name = name.trim();
+  addr = addr.trim();
+  if (!name) { $('vmsg').textContent = 'Enter a supplier name.'; return false; }
+  const a = analyze({ addr, net, supId: null });
+  if (a.bad) {
+    $('vmsg').textContent = 'Not saved: ' + (a.F.find(f => f.nosave)?.t || 'invalid address');
+    return false;
+  }
+  let s = vault.find(v => v.name.toLowerCase() === name.toLowerCase());
+  if (!s) {
+    s = { id: 's' + Date.now(), name, domain: ($('vdomain')?.value || '').trim().toLowerCase(), addrs: [] };
+    vault.push(s);
+  } else if ($('vdomain')?.value.trim()) {
+    s.domain = $('vdomain').value.trim().toLowerCase();
+  }
+  if (!s.addrs.some(x => same(x.addr, addr)))
+    s.addrs.push({ addr, net, added: Date.now() });
+  storeVault();
+  $('vmsg').textContent = '';
+  return true;
+}
+
+function drawVault() {
+  const el = $('vault');
+  el.innerHTML = vault.length ? '' : '<p class="empty">No suppliers saved yet. Save a verified address below, or run a demo scenario.</p>';
+  vault.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'sup';
+    const domain = s.domain ? `<span class="meta"> · ${esc(s.domain)}</span>` : '';
+    d.innerHTML = `<h3>${esc(s.name)}${domain}<button class="sm" data-d="${s.id}">Remove</button></h3>` +
+      s.addrs.map(x => `<div class="ad"><span><span class="net">${esc(NETS[x.net].n)}</span>${esc(x.addr)}</span></div>`).join('');
+    el.appendChild(d);
+  });
+  el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
+    vault = vault.filter(v => v.id !== b.dataset.d);
+    storeVault();
+    drawVault();
+    fillSup();
+  });
+  fillSup();
+}
+
+function drawHistory() {
+  const el = $('history');
+  if (!history.length) {
+    el.innerHTML = '<p class="empty">No checks yet this session.</p>';
+    return;
+  }
+  el.innerHTML = history.slice(0, 12).map(h => {
+    const when = new Date(h.ts).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    const short = h.addr ? (h.addr.length > 18 ? h.addr.slice(0, 8) + '…' + h.addr.slice(-6) : h.addr) : '—';
+    return `<div class="hist-item">
+      <span class="dot ${h.status}"></span>
+      <div>
+        <div><b>${esc(h.label)}</b> · ${esc(h.supplier)} · <span class="mono">${esc(short)}</span></div>
+        <div class="faint" style="font-size:12px;margin-top:2px">${esc(when)}${h.findings[0] ? ' · ' + esc(h.findings[0].slice(0, 80)) : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fillSup() {
+  const c = $('sup').value;
+  $('sup').innerHTML = '<option value="">Any saved supplier</option>' +
+    vault.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  $('sup').value = vault.some(v => v.id === c) ? c : '';
+}
+
+function check() {
+  let addr = '', net = $('net').value, supId = $('sup').value, extracted = null, text = '';
+
+  if (mode === 'invoice') {
+    text = $('invoice').value;
+    const sender = $('sender').value;
+    extracted = extractInvoice(text, sender);
+    addr = extracted.destination || '';
+    if (extracted.network && NETS[extracted.network]) net = extracted.network;
+    // try match supplier by name
+    if (!supId && extracted.supplier_name) {
+      const hit = vault.find(v => v.name.toLowerCase() === extracted.supplier_name.toLowerCase()
+        || extracted.supplier_name.toLowerCase().includes(v.name.toLowerCase()));
+      if (hit) { supId = hit.id; $('sup').value = hit.id; }
+    }
+    if (!addr) {
+      $('out').innerHTML = `<div class="verdict warn"><div class="ic">⚠️</div><div><b>No address found</b><span>Paste a message that contains a TRON or 0x wallet, or switch to Address only mode.</span></div></div>`;
+      return;
+    }
+    $('addr').value = addr;
+    $('net').value = net;
+  } else {
+    addr = $('addr').value.trim();
+    if (!addr) { $('out').innerHTML = ''; return; }
+  }
+
+  const r = analyze({ addr, net, supId, text, sender: $('sender')?.value, extracted });
+  render(r, addr, net, supId);
+}
+
+function setModeUI() {
+  const isInv = mode === 'invoice';
+  $('modeAddress').classList.toggle('hidden', isInv);
+  $('modeInvoice').classList.toggle('hidden', !isInv);
+  $('tabAddr').classList.toggle('active', !isInv);
+  $('tabInv').classList.toggle('active', isInv);
+}
+
+function demoVault() {
+  if (!vault.some(v => v.name === 'Global Trade Ltd')) {
+    vault.push({
+      id: 'demo1',
+      name: 'Global Trade Ltd',
+      domain: 'globaltrade.example',
+      addrs: [
+        { addr: D.good, net: 'tron', added: Date.now() - 6048e5 * 3 },
+        { addr: D.evm, net: 'eth', added: Date.now() - 6048e5 * 3 }
+      ]
+    });
+    storeVault();
+  }
+  drawVault();
+}
+
+/* ========== Demos ========== */
+const SC = [
+  ['✅ Genuine', 'tron', D.good, null],
+  ['🔗 Wrong chain', 'tron', D.evm, null],
+  ['🎭 Poisoned lookalike', 'tron', D.fake, null],
+  ['✏️ One-char typo', 'tron', D.typo, null],
+  ['🔄 Address changed', 'tron', D.changed, null],
+  ['🪙 Token contract', 'tron', CONTRACTS.tron, null]
+];
+
+const INV_GENUINE = `From: Global Trade Ltd <billing@globaltrade.example>
+Invoice No: INV-2026-001
+Date: 18 November 2026
+Bill to: Lagos Imports Ltd
+
+500 units - LED panels
+Total: 8,000 USDT
+
+Payment details
+Network: TRON (TRC20)
+USDT wallet: ${D.good}
+
+Thank you for your business.`;
+
+const INV_TAMPERED = `From: Global Trade Ltd <billing@g1obaltrade.example>
+Invoice No: INV-2026-001
+Date: 18 November 2026
+Bill to: Lagos Imports Ltd
+
+500 units - LED panels
+Total: 8,000 USDT
+
+URGENT: we have changed our wallet. Use the new wallet below and do not call, we are in a meeting.
+
+Payment details
+Network: TRON (TRC20)
+USDT wallet: ${D.changed}
+
+Thank you for your business.`;
+
+SC.forEach(s => {
+  const b = document.createElement('button');
+  b.textContent = s[0];
+  b.onclick = () => {
+    demoVault();
+    mode = 'address';
+    setModeUI();
+    $('sup').value = 'demo1';
+    $('net').value = s[1];
+    $('addr').value = s[2];
+    check();
+  };
+  $('demos').appendChild(b);
+});
+
+// Quick demos (hero)
+[
+  ['Load demo supplier', () => { demoVault(); toast('Demo supplier loaded'); }],
+  ['Genuine invoice', () => {
+    demoVault();
+    mode = 'invoice';
+    setModeUI();
+    $('sup').value = 'demo1';
+    $('sender').value = 'billing@globaltrade.example';
+    $('invoice').value = INV_GENUINE;
+    check();
+  }],
+  ['Tampered invoice', () => {
+    demoVault();
+    mode = 'invoice';
+    setModeUI();
+    $('sup').value = 'demo1';
+    $('sender').value = 'billing@g1obaltrade.example';
+    $('invoice').value = INV_TAMPERED;
+    check();
+  }]
+].forEach(([label, fn]) => {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = fn;
+  $('quickDemos').appendChild(b);
+});
+
+/* ========== Wire up ========== */
+const opts = Object.entries(NETS).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('');
+$('net').innerHTML = opts;
+$('vnet').innerHTML = opts;
+
+$('tabAddr').onclick = () => { mode = 'address'; setModeUI(); };
+$('tabInv').onclick = () => { mode = 'invoice'; setModeUI(); };
+
+$('go').onclick = check;
+$('clr').onclick = () => {
+  $('addr').value = '';
+  $('invoice').value = '';
+  $('sender').value = '';
+  $('out').innerHTML = '';
+};
+$('vadd').onclick = () => {
+  if (saveAddr($('vn').value, $('vnet').value, $('va').value)) {
+    $('va').value = '';
+    $('vn').value = '';
+    $('vdomain').value = '';
+    drawVault();
+    toast('Supplier saved');
+  }
+};
+$('vexp').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(vault, null, 2)], { type: 'application/json' }));
+  a.download = 'intentlock-vault.json';
+  a.click();
+};
+$('vreset').onclick = () => {
+  if (confirm('Remove all saved suppliers from this browser?')) {
+    vault = [];
+    storeVault();
+    drawVault();
+    $('out').innerHTML = '';
+  }
+};
+$('histClear').onclick = () => {
+  history = [];
+  storeHist();
+  drawHistory();
+};
+$('btnExportAll').onclick = () => {
+  const data = { vault, history, exported_at: new Date().toISOString() };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = 'intentlock-export.json';
+  a.click();
+};
+$('btnAbout').onclick = () => {
+  alert(`IntentLock · Address Guard (client edition)
+
+Verify payment destinations against a local supplier vault before you send USDT.
+
+This page ports the core ideas from the full IntentLock project:
+• Deterministic address & network validation
+• Supplier vault with lookalike detection
+• Invoice/message language rules (change & urgency)
+• Domain lookalike checks
+• Local proof export
+
+Full product (GitHub): invoice PDF/AI reading, EIP-712 supplier signatures, on-chain USDT verification (TRON + Ethereum), hash-chained Proof Links, and an audit API.
+
+No custody. No keys. Everything stays in your browser.`);
+};
+
+load();
+drawVault();
+drawHistory();
+setModeUI();
+</script>
+</body>
+</html>
