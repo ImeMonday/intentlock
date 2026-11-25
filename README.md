@@ -204,6 +204,9 @@ IntentLock is a decision-support and audit tool. It does not guarantee that a pa
 - TRON lookups fail or rate-limit: add a free `TRONGRID_API_KEY` to `.env`.
 - Reset all data by deleting `intentlock.db`.
 
+## Live demo
+https://intentlock-hcf6.onrender.com
+
 ## Team
 
 Imeobong Tom  and Edidiong Moses
