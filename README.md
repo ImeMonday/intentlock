@@ -48,6 +48,9 @@ flowchart LR
 
 - Invoice and message reader (pasted text, PDF, optional image reading with a vision model)
 - 20+ deterministic risk rules (see below)
+- Pre-flight address check: catches invalid, wrong-network and wrong-asset addresses before you send (for example a Solana address on a TRON payment, a Bitcoin address under Ethereum, or USDT on a network Cleva does not accept)
+- Address-poisoning guard: warns when a new address has the same start and end as one you have used or saved, but a different middle
+- Landing page, sign-in and demo account (prototype authentication, one shared workspace)
 - Supplier registry with approved wallets and known email domains
 - Optional supplier-signed payment instructions (EIP-712) with nonce and expiry replay protection
 - Side-by-side wallet comparison with differences highlighted and one-click swap to the verified wallet
@@ -78,7 +81,7 @@ python selftest.py
 uvicorn backend.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. `python selftest.py` runs offline and should print PASS on every line.
+Open http://127.0.0.1:8000 for the landing page, then click **Try the demo** (or create an account). The app itself is at `/app`. `python selftest.py` runs offline and should print PASS on every line.
 
 ## Configuration
 
@@ -116,6 +119,8 @@ To show signature checking on its own, sign the genuine invoice, click **Tamper 
 | --- | --- | --- |
 | `INVALID_ADDRESS` | Critical | The destination is not a valid TRON or Ethereum address |
 | `DESTINATION_CHANGED` | Critical | The destination is not in the supplier's approved list |
+| `ADDRESS_NETWORK_MISMATCH`, `ADDRESS_ASSET_MISMATCH`, `UNRECOGNISED_ADDRESS` | Critical | The address belongs to a different network or asset than the payment states, or is not a recognised format |
+| `ADDRESS_POISONING` | Critical | The address has the same start and end as a known address but a different middle |
 | `SIG_INVALID` | Critical | The supplier signature does not match the registered key |
 | `SIG_MISMATCH` | Critical | The signed instruction differs from the invoice |
 | `SIG_REPLAY` | Critical | A signed instruction was already used for a verified payment |
@@ -124,7 +129,7 @@ To show signature checking on its own, sign the genuine invoice, click **Tamper 
 | `LOOKALIKE_DOMAIN` | High | The sender domain is within two edits of the known domain |
 | `CHANGE_ANNOUNCED` | High | The message announces new payment details |
 | `DUPLICATE_INVOICE_CHANGED` | High | An invoice number was reused with a different amount or destination |
-| `NETWORK_MISMATCH`, `NO_DESTINATION`, `NO_APPROVED_DESTINATION`, `SIG_EXPIRED` | High | Network and address disagree, nothing to pay to, or an expired signature |
+| `UNSUPPORTED_NETWORK`, `NO_DESTINATION`, `NO_APPROVED_DESTINATION`, `SIG_EXPIRED` | High | USDT on a network Cleva does not accept, nothing to pay to, or an expired signature |
 | `URGENCY_PRESSURE`, `AMOUNT_ANOMALY`, `SENDER_DOMAIN_DIFFERS`, `DUPLICATE_PAID`, `CURRENCY` | Medium | Pressure language, an amount over 3x the largest earlier payment, a different sender domain, an already-paid invoice, or an unexpected currency |
 
 Any critical finding withholds approval. Any high or medium finding requires verification. With no findings above informational, the payment is approved.
@@ -150,6 +155,8 @@ backend/
   main.py        API routes
   rules.py       deterministic risk rules and decision
   chain.py       address validation and on-chain verification
+  addresses.py   wrong-network, wrong-asset and address-poisoning checks
+  auth.py        prototype sign-in (hashed passwords, sessions)
   signing.py     supplier-signed instructions (EIP-712)
   extract.py     invoice reading (rules, PDF, optional AI)
   llm.py         optional OpenAI-compatible client
@@ -157,7 +164,9 @@ backend/
   db.py          SQLite layer
   config.py      settings
 frontend/
-  index.html     main interface
+  landing.html   landing page
+  login.html     sign in and create account
+  index.html     main interface (the app)
   proof.html     public Proof Link page
 selftest.py      offline self-test
 ```
@@ -175,6 +184,8 @@ selftest.py      offline self-test
 - IntentLock does not send payments or block a transfer made elsewhere. It gives or withholds approval.
 - USD bank-account suppliers cannot yet be registered, only wallets.
 - No WhatsApp integration yet; messages are pasted in.
+- Sign-in is prototype-grade: one shared workspace for all users, no email verification, no rate limiting. Do not reuse a real password.
+- A 0x address is identical on every Ethereum-style network, so the network cannot be read from the address. The check flags it when the network is not stated, and flags USDT on networks Cleva does not accept. Cleva's supported networks were taken from its help center and may change.
 
 IntentLock is a decision-support and audit tool. It does not guarantee that a payment is safe, and it is not a substitute for verifying payment details with your supplier.
 

@@ -58,6 +58,30 @@ check("swapped wallet with no signature is withheld", status_b2 == "withheld")
 status_new, _ = rules.decide(rules.evaluate(ex_a, None, [], [], "", text_a, None))
 check("unknown supplier needs verification", status_new == "needs_verification")
 
+# address and network checks
+from backend import addresses
+
+sol = "So11111111111111111111111111111111111111112"
+btc = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+usdt_eth = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+check("detects a Solana address", addresses.detect(sol)["family"] == "SOLANA")
+check("detects a valid Bitcoin address", addresses.detect(btc)["family"] == "BITCOIN" and addresses.detect(btc)["valid"])
+check("detects a TRON address", addresses.detect(approved)["family"] == "TRON")
+check("Solana address on TRON is critical", any(f["severity"] == "critical" for f in addresses.preflight(sol, "TRON", "USDT")))
+check("Bitcoin address on Ethereum is critical", any(f["severity"] == "critical" for f in addresses.preflight(btc, "ETHEREUM", "USDT")))
+check("BTC asset to a 0x address is critical", any(f["id"] == "ADDRESS_ASSET_MISMATCH" for f in addresses.preflight(usdt_eth, "ETHEREUM", "BTC")))
+check("USDT on BNB Chain is flagged unsupported", any(f["id"] == "UNSUPPORTED_NETWORK" for f in addresses.preflight(usdt_eth, "BSC", "USDT")))
+check("correct TRON USDT address passes", all(f["severity"] == "info" for f in addresses.preflight(approved, "TRON", "USDT")))
+check("extraction finds a Solana address", extract.heuristic_extract(f"Pay 50 USDT on Solana to {sol}")["destination"] == sol)
+
+# address poisoning
+eth_a = "0x" + "a1b2" + "11" * 16 + "c3d4"
+eth_b = "0x" + "a1b2" + "22" * 16 + "c3d4"
+check("lookalike address is detected", addresses.lookalikes(eth_b, [eth_a]) == [eth_a])
+check("the same address is not a lookalike", addresses.lookalikes(eth_a, [eth_a]) == [])
+check("unrelated addresses are not lookalikes", addresses.lookalikes(attacker, [approved]) == [])
+check("poisoning is a critical finding", any(f["severity"] == "critical" for f in addresses.poison_findings(eth_b, [eth_a])))
+
 # settlement logic
 real = [{"contract": chain.official_token("TRON"), "official": True, "from": attacker, "to": approved, "amount": 8000}]
 fake = [dict(real[0], official=False)]

@@ -1,4 +1,5 @@
 """IntentLock API. Run from the project root:  uvicorn backend.main:app --reload"""
+import hashlib
 import json
 import secrets
 import time
@@ -6,11 +7,11 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from backend import audit, chain, config, db, extract, llm, rules, signing
+from backend import addresses, audit, auth, chain, config, db, extract, llm, rules, signing
 
 app = FastAPI(title="IntentLock")
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
@@ -28,9 +29,102 @@ def jload(s, default=None):
 
 
 # ---------------------------------------------------------------- pages
+COOKIE = "il_session"
+OPEN_API = ("/api/auth/", "/api/health", "/api/proof/")
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/") and not path.startswith(OPEN_API):
+        with db.get_conn() as conn:
+            user = auth.user_for(conn, request.cookies.get(COOKIE))
+        if not user:
+            return JSONResponse({"detail": "Please sign in."}, status_code=401)
+    return await call_next(request)
+
+
 @app.get("/")
-def home():
+def landing():
+    return FileResponse(FRONTEND / "landing.html")
+
+
+@app.get("/login")
+def login_page():
+    return FileResponse(FRONTEND / "login.html")
+
+
+@app.get("/app")
+def app_page(request: Request):
+    with db.get_conn() as conn:
+        if not auth.user_for(conn, request.cookies.get(COOKIE)):
+            return RedirectResponse("/login")
     return FileResponse(FRONTEND / "index.html")
+
+
+class SignupIn(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+def _set_cookie(response: Response, token: str):
+    response.set_cookie(COOKIE, token, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7)
+
+
+@app.post("/api/auth/signup")
+def signup(body: SignupIn, response: Response):
+    with db.get_conn() as conn:
+        try:
+            uid = auth.create_user(conn, body.email, body.password, body.name)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        token = auth.new_session(conn, uid)
+    _set_cookie(response, token)
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+def login(body: LoginIn, response: Response):
+    with db.get_conn() as conn:
+        user = auth.check_login(conn, body.email, body.password)
+        if not user:
+            raise HTTPException(401, "Incorrect email or password.")
+        token = auth.new_session(conn, user["id"])
+    _set_cookie(response, token)
+    return {"ok": True}
+
+
+@app.post("/api/auth/demo")
+def demo_login(response: Response):
+    with db.get_conn() as conn:
+        token = auth.new_session(conn, auth.demo_user_id(conn))
+    _set_cookie(response, token)
+    return {"ok": True}
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request, response: Response):
+    token = request.cookies.get(COOKIE)
+    if token:
+        with db.get_conn() as conn:
+            auth.end_session(conn, token)
+    response.delete_cookie(COOKIE)
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    with db.get_conn() as conn:
+        user = auth.user_for(conn, request.cookies.get(COOKIE))
+    if not user:
+        raise HTTPException(401, "Please sign in.")
+    return user
 
 
 @app.get("/proof/{token}")
@@ -55,9 +149,13 @@ def add_supplier(conn, name, destination, known_domain, with_demo_key, via):
     name, destination = name.strip(), destination.strip()
     if not name or not destination:
         raise HTTPException(400, "Name and destination are required.")
-    net = chain.guess_network(destination)
-    if not net or not chain.is_valid_address(net, destination):
-        raise HTTPException(400, "Destination must be a valid TRON (T...) or Ethereum (0x...) address.")
+    det = addresses.detect(destination)
+    net = {"TRON": "TRON", "EVM": "ETHEREUM"}.get(det["family"])
+    if not net or not det["valid"]:
+        if det["family"] in ("SOLANA", "BITCOIN"):
+            raise HTTPException(400, f"This is a {addresses.FAMILY_NAME[det['family']]} address. Cleva accepts USDT on TRON and "
+                                     "Ethereum, so register a TRON (T...) or Ethereum (0x...) wallet.")
+        raise HTTPException(400, det["note"] or "Destination must be a valid TRON (T...) or Ethereum (0x...) address.")
     if db.one(conn, "SELECT 1 AS x FROM suppliers WHERE name=?", (name,)):
         raise HTTPException(409, "A supplier with this name already exists.")
     cur = conn.execute("INSERT INTO suppliers(name, known_domain, created_at) VALUES (?,?,?)",
@@ -92,16 +190,44 @@ def create_supplier(body: SupplierIn):
         return supplier_view(conn, db.one(conn, "SELECT * FROM suppliers WHERE id=?", (sid,)))
 
 
+# ---------------------------------------------------------------- pre-flight address check
+class AddressIn(BaseModel):
+    address: str
+    network: str = ""
+    asset: str = "USDT"
+
+
+def _known_addresses(conn):
+    saved = [r["address"] for r in db.rows(conn, "SELECT address FROM destinations")]
+    seen = [r["destination"] for r in db.rows(conn, "SELECT DISTINCT destination FROM checks WHERE dest_kind='wallet' AND destination IS NOT NULL")]
+    return saved + seen
+
+
+@app.post("/api/address/check")
+def address_check(body: AddressIn):
+    det = addresses.detect(body.address)
+    findings = addresses.preflight(body.address, body.network or None, body.asset or None)
+    with db.get_conn() as conn:
+        findings += addresses.poison_findings(body.address, _known_addresses(conn))
+    worst = max((rules.RANK[f["severity"]] for f in findings), default=0)
+    return {"detected": det, "findings": findings, "verdict": "stop" if worst >= 3 else "review" if worst >= 1 else "ok"}
+
+
 # ---------------------------------------------------------------- demo helpers
 @app.post("/api/demo/seed")
 def seed():
     approved = chain.tron_address_from_label("intentlock-demo-approved")
     attacker = chain.tron_address_from_label("intentlock-demo-attacker")
+    eth_saved = "0x" + hashlib.sha256(b"intentlock-demo-eth").hexdigest()[:40]
+    eth_look = eth_saved[:6] + hashlib.sha256(b"intentlock-demo-eth-attacker").hexdigest()[:32] + eth_saved[-4:]
     with db.get_conn() as conn:
         s = db.one(conn, "SELECT id FROM suppliers WHERE name=?", (DEMO_NAME,))
         if not s:
             add_supplier(conn, DEMO_NAME, approved, DEMO_DOMAIN, True, "demo seed")
             s = db.one(conn, "SELECT id FROM suppliers WHERE name=?", (DEMO_NAME,))
+    with db.get_conn() as conn:
+        if not db.one(conn, "SELECT id FROM suppliers WHERE name=?", ("Lagos Freight Co",)):
+            add_supplier(conn, "Lagos Freight Co", eth_saved, "lagosfreight.example", False, "demo seed")
     # If you edited the demo supplier's wallet, samples still use the original demo addresses.
 
     def sample(domain, wallet, extra=""):
@@ -113,6 +239,7 @@ def seed():
 
     return {
         "supplier_id": s["id"],
+        "poison_demo": {"address": eth_look, "network": "ETHEREUM"},
         "samples": {
             "a": sample(DEMO_DOMAIN, approved, "Thank you for your business."),
             "b": sample("g1obaltrade.example", attacker,
@@ -240,7 +367,8 @@ def analyze(supplier_id: str = Form(""), sender: str = Form(""), text: str = For
         domain = email.split("@")[-1] if email else ""
         sig = build_sig(conn, supplier, signed_json)
 
-        findings = rules.evaluate(ex, supplier, dests, hist, domain, text, sig)
+        known = _known_addresses(conn)
+        findings = rules.evaluate(ex, supplier, dests, hist, domain, text, sig, known)
         status, risk = rules.decide(findings)
         explanation = rules.template_explanation(status, findings)
         if llm.enabled():

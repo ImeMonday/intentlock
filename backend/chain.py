@@ -87,7 +87,11 @@ def norm_network(n):
         return "ETHEREUM"
     if s == "BANK":
         return "BANK"
-    return s or None
+    aliases = {"BEP20": "BSC", "BSC": "BSC", "BNB": "BSC", "BNBCHAIN": "BSC", "BNBSMARTCHAIN": "BSC",
+               "POLYGON": "POLYGON", "MATIC": "POLYGON", "ARBITRUM": "ARBITRUM", "OPTIMISM": "OPTIMISM",
+               "BASE": "BASE", "AVALANCHE": "AVALANCHE", "AVAX": "AVALANCHE",
+               "SOLANA": "SOLANA", "SOL": "SOLANA", "SPL": "SOLANA", "BITCOIN": "BITCOIN", "BTC": "BITCOIN"}
+    return aliases.get(s, s or None)
 
 
 def guess_network(addr):
@@ -113,7 +117,7 @@ def is_valid_address(network, addr) -> bool:
 
 def same_address(network, a, b) -> bool:
     a, b = (a or "").strip(), (b or "").strip()
-    if network == "ETHEREUM":
+    if network in ("ETHEREUM", "BSC", "POLYGON", "ARBITRUM", "OPTIMISM", "BASE", "AVALANCHE"):
         return a.lower() == b.lower()
     return a == b
 

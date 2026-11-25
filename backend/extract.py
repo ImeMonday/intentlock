@@ -7,10 +7,9 @@ import base64
 import io
 import re
 
-from backend import chain, config, llm
+from backend import addresses, chain, config, llm
 
-TRON_RE = re.compile(r"\bT[1-9A-HJ-NP-Za-km-z]{33}\b")
-ETH_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
+TOKEN_RE = re.compile(r"\b(?:0x[0-9a-fA-F]{40}|bc1[0-9a-zA-Z]{6,87}|[1-9A-HJ-NP-Za-km-z]{26,44})\b")
 KEYS = ("supplier_name", "invoice_number", "amount", "currency", "network", "destination", "dest_kind", "sender_email")
 
 
@@ -29,13 +28,15 @@ def normalize(f):
     if f.get("currency"):
         f["currency"] = str(f["currency"]).upper()
     f["network"] = chain.norm_network(f.get("network"))
+    if "network_stated" not in f:
+        f["network_stated"] = bool(f["network"]) and f["network"] != "BANK"
     d = (str(f.get("destination") or "")).strip() or None
     f["destination"] = d
     if d:
-        g = chain.guess_network(d)
-        if g:
+        fam = addresses.detect(d)["family"]
+        if fam:
             f["dest_kind"] = "wallet"
-            f["network"] = f["network"] or g
+            f["network"] = f["network"] or addresses.DEFAULT_NET[fam]
         else:
             f["dest_kind"] = "bank"
             f["network"] = "BANK"
@@ -69,23 +70,35 @@ def heuristic_extract(text):
             except ValueError:
                 pass
 
-    if re.search(r"\bUSDT\b", t, re.I):
-        f["currency"] = "USDT"
-    elif "$" in t or re.search(r"\bUSD\b", t, re.I):
-        f["currency"] = "USD"
+    for pat, name in ((r"\bUSDT\b", "USDT"), (r"\bUSDC\b", "USDC"), (r"\bBTC\b", "BTC"),
+                      (r"\bETH\b", "ETH"), (r"\bSOL\b", "SOL"), (r"\bTRX\b", "TRX")):
+        if re.search(pat, t, re.I):
+            f["currency"] = name
+            break
+    else:
+        if "$" in t or re.search(r"\bUSD\b", t, re.I):
+            f["currency"] = "USD"
 
-    if re.search(r"TRC[ \-]?20|\bTRON\b", t, re.I):
-        f["network"] = "TRON"
-    elif re.search(r"ERC[ \-]?20|\bEthereum\b", t, re.I):
-        f["network"] = "ETHEREUM"
+    for pat, name in ((r"TRC[ \-]?20|\bTRON\b", "TRON"), (r"ERC[ \-]?20|\bEthereum\b", "ETHEREUM"),
+                      (r"BEP[ \-]?20|\bBSC\b|BNB (?:Smart )?Chain", "BSC"), (r"\bPolygon\b|\bMATIC\b", "POLYGON"),
+                      (r"\bArbitrum\b", "ARBITRUM"), (r"\bOptimism\b", "OPTIMISM"), (r"\bAvalanche\b|C-Chain", "AVALANCHE"),
+                      (r"\bBase (?:network|chain)\b", "BASE"), (r"\bSolana\b|\bSPL\b", "SOLANA"), (r"\bBitcoin\b", "BITCOIN")):
+        if re.search(pat, t, re.I):
+            f["network"] = name
+            break
+    f["network_stated"] = bool(f["network"])
 
-    cands = ([(m.start(), "TRON", m.group(0)) for m in TRON_RE.finditer(t)]
-             + [(m.start(), "ETHEREUM", m.group(0)) for m in ETH_RE.finditer(t)])
+    cands = []
+    for m in TOKEN_RE.finditer(t):
+        fam = addresses.detect(m.group(0))["family"]
+        if fam:
+            cands.append((m.start(), fam, m.group(0)))
     if cands:
         cands.sort()
-        pick = next((c for c in cands if c[1] == f["network"]), cands[0])
+        stated_fam = addresses.FAMILY_OF.get(f["network"])
+        pick = next((c for c in cands if c[1] == stated_fam), cands[0])
         f["destination"] = pick[2]
-        f["network"] = f["network"] or pick[1]
+        f["network"] = f["network"] or addresses.DEFAULT_NET[pick[1]]
     else:
         m = (re.search(r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b", t)
              or re.search(r"(?:account|acct)[^0-9\n]{0,20}([0-9][0-9 \-]{6,20}[0-9])", t, re.I))

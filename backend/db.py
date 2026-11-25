@@ -61,6 +61,19 @@ CREATE TABLE IF NOT EXISTS demo_keys (
   supplier_id INTEGER PRIMARY KEY,
   private_key TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  pw_hash TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at TEXT
+);
 """
 
 

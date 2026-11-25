@@ -1,7 +1,7 @@
 """Deterministic risk rules. AI can read documents and explain results, but THESE rules decide."""
 from decimal import Decimal
 
-from backend import chain
+from backend import addresses, chain
 
 RANK = {"info": 0, "medium": 1, "high": 2, "critical": 3}
 
@@ -43,7 +43,7 @@ def _dec(x):
         return None
 
 
-def evaluate(ex, supplier, destinations, history, sender_domain, text, sig):
+def evaluate(ex, supplier, destinations, history, sender_domain, text, sig, known=None):
     """ex: extracted fields. supplier: dict or None. destinations: approved list.
     history: earlier checks for this supplier. sig: signed-instruction result or None."""
     findings = []
@@ -55,15 +55,8 @@ def evaluate(ex, supplier, destinations, history, sender_domain, text, sig):
         findings.append(F("NO_DESTINATION", "high", "No payment destination found",
                           "The invoice does not contain a wallet address or bank account we could read.", True))
     elif kind == "wallet":
-        guess = chain.guess_network(dest)
-        if guess is None or not chain.is_valid_address(guess, dest):
-            findings.append(F("INVALID_ADDRESS", "critical", "Address is not valid",
-                              "This does not look like a valid TRON or Ethereum address (a typo or tampering). "
-                              "Sending to it could lose the funds.", True))
-        elif net and net != guess:
-            findings.append(F("NETWORK_MISMATCH", "high", "Network does not match the address",
-                              f"The invoice says {net} but the address is a {guess} address. "
-                              "Paying on the wrong network can lose funds permanently."))
+        findings.extend(addresses.preflight(dest, net if ex.get("network_stated") else None, ex.get("currency")))
+        findings.extend(addresses.poison_findings(dest, known or []))
 
     if ex.get("currency") and ex["currency"] not in ("USDT", "USD"):
         findings.append(F("CURRENCY", "medium", "Unexpected currency", f"Invoice currency is {ex['currency']}."))

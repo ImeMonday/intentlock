@@ -26,6 +26,7 @@ ETH_USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
 MIN_CONFIRMATIONS = {"TRON": 20, "ETHEREUM": 12}
 CLEVA_MIN_DEPOSIT = 10
+CLEVA_USDT_NETWORKS = {"TRON", "ETHEREUM"}  # per Cleva's help center; check its current list
 
 
 def llm_enabled() -> bool:
