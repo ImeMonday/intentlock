@@ -48,7 +48,10 @@ flowchart LR
 
 - Invoice and message reader (pasted text, PDF, optional image reading with a vision model)
 - 20+ deterministic risk rules (see below)
-- Pre-flight address check: catches invalid, wrong-network and wrong-asset addresses before you send (for example a Solana address on a TRON payment, a Bitcoin address under Ethereum, or USDT on a network Cleva does not accept)
+- Address-first check: catches invalid, wrong-network and wrong-asset addresses before you send (for example a Solana address on a TRON payment, a Bitcoin address under Ethereum, or USDT on a network Cleva does not accept), plus typos, lookalikes and token contracts
+- Private receiver vault: each user saves verified addresses with the receiver's name, so a changed or mistyped address is caught on the next payment
+- Draft message: when an address fails, IntentLock drafts a message to the receiver that you can copy or send by WhatsApp or email
+- The invoice or message check is optional and sits behind its own tab
 - Address-poisoning guard: warns when a new address has the same start and end as one you have used or saved, but a different middle
 - Landing page, sign-in and demo account (prototype authentication, one shared workspace)
 - Supplier registry with approved wallets and known email domains
@@ -97,6 +100,18 @@ Copy `.env.example` to `.env`. Every setting is optional.
 Never commit `.env`. It is listed in `.gitignore`.
 
 ## Demo walkthrough
+
+The app opens on **Check before sending**. Every signed-in user gets a private, empty receiver vault.
+
+1. Click **Try the demo** on the landing page. You start with an empty vault.
+2. Click the **Genuine** scenario. It loads demo receivers into your vault and shows the address as a verified receiver.
+3. Click **Wrong chain**, **Poisoned lookalike**, **One-char typo**, **Address changed** and **Token contract** in turn. Each is blocked with the reason.
+4. On a blocked result, open **Draft a message to the receiver**, then copy it or send it by WhatsApp or email.
+5. Paste a new address, run the check, and save it to the vault with the receiver's name.
+
+### Invoice demo (optional)
+
+Use the **Invoice / message** tab. The steps below show the swapped-wallet case.
 
 1. Click **Load demo supplier**. This creates "Global Trade Ltd" with an approved wallet, a known email domain and a demo signing key.
 2. Click **Genuine invoice**, then open **Supplier signature** and click **Sign as supplier (demo)**, then **Run check**. The result is approved to pay.
@@ -204,9 +219,6 @@ IntentLock is a decision-support and audit tool. It does not guarantee that a pa
 - TRON lookups fail or rate-limit: add a free `TRONGRID_API_KEY` to `.env`.
 - Reset all data by deleting `intentlock.db`.
 
-## Live demo
-https://intentlock-hcf6.onrender.com
-
 ## Team
 
-Imeobong Tom  and Edidiong Moses
+[Team name] | [Member names]

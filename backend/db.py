@@ -7,7 +7,8 @@ from backend import config
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS suppliers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT UNIQUE NOT NULL,
+  user_id INTEGER,
+  name TEXT NOT NULL,
   known_domain TEXT DEFAULT '',
   signing_address TEXT DEFAULT '',
   created_at TEXT
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS destinations (
 CREATE TABLE IF NOT EXISTS checks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   token TEXT UNIQUE NOT NULL,
+  user_id INTEGER,
   supplier_id INTEGER,
   supplier_name TEXT,
   invoice_number TEXT,
@@ -93,6 +95,10 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(suppliers)").fetchall()]
+        if cols and "user_id" not in cols:  # old shared-workspace schema: reset the data tables (accounts are kept)
+            conn.executescript("DROP TABLE IF EXISTS suppliers; DROP TABLE IF EXISTS destinations; DROP TABLE IF EXISTS checks; "
+                               "DROP TABLE IF EXISTS audit; DROP TABLE IF EXISTS nonces; DROP TABLE IF EXISTS demo_keys;")
         conn.executescript(SCHEMA)
 
 

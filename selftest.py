@@ -82,6 +82,21 @@ check("the same address is not a lookalike", addresses.lookalikes(eth_a, [eth_a]
 check("unrelated addresses are not lookalikes", addresses.lookalikes(attacker, [approved]) == [])
 check("poisoning is a critical finding", any(f["severity"] == "critical" for f in addresses.poison_findings(eth_b, [eth_a])))
 
+# receiver vault
+vault = [{"address": approved, "network": "TRON", "sid": 1, "name": "Global Trade Ltd"},
+         {"address": eth_a, "network": "ETHEREUM", "sid": 2, "name": "Esther Ltd"}]
+v_ok, m_ok = addresses.vault_check(approved, vault, 1, "Global Trade Ltd")
+check("saved address is recognised with the receiver's name", m_ok and m_ok["name"] == "Global Trade Ltd" and v_ok[0]["id"] == "VERIFIED_RECEIVER")
+v_wrong, _ = addresses.vault_check(approved, vault, 2, "Esther Ltd")
+check("an address saved for someone else is critical", any(f["id"] == "WRONG_RECEIVER" for f in v_wrong))
+v_chg, _ = addresses.vault_check(attacker, vault, 1, "Global Trade Ltd")
+check("a different address for a chosen receiver is critical", any(f["id"] == "ADDRESS_CHANGED" for f in v_chg))
+typo_addr = approved[:20] + ("A" if approved[20] != "A" else "B") + approved[21:]
+v_typo, _ = addresses.vault_check(typo_addr, vault, None, None)
+check("a one-character typo of a saved address is detected", any(f["id"] == "ADDRESS_TYPO" for f in v_typo))
+check("a typo'd TRON address fails its checksum", not addresses.detect(typo_addr)["valid"])
+check("the USDT token contract is rejected as a destination", any(f["id"] == "TOKEN_CONTRACT" for f in addresses.preflight("TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", "TRON", "USDT")))
+
 # settlement logic
 real = [{"contract": chain.official_token("TRON"), "official": True, "from": attacker, "to": approved, "amount": 8000}]
 fake = [dict(real[0], official=False)]

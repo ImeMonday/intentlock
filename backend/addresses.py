@@ -79,6 +79,65 @@ def detect(addr):
     return {"family": None, "valid": False, "note": "Format not recognised."}
 
 
+# ---------- token contracts (not wallets) ----------
+TOKEN_CONTRACTS = {
+    config.TRON_USDT: "USDT on TRON",
+    config.ETH_USDT.lower(): "USDT on Ethereum",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": "USDC on Ethereum",
+}
+
+
+def token_findings(addr):
+    a = (addr or "").strip()
+    name = TOKEN_CONTRACTS.get(a) or TOKEN_CONTRACTS.get(a.lower())
+    if not name:
+        return []
+    return [F("TOKEN_CONTRACT", "critical", "This is a token contract, not a wallet",
+              f"{a} is the {name} token contract. Funds sent to a token contract can be lost permanently.", True)]
+
+
+# ---------- the receiver vault ----------
+def _same(a, b):
+    a, b = a.strip(), b.strip()
+    if a.lower().startswith("0x") and b.lower().startswith("0x"):
+        return a.lower() == b.lower()
+    return a == b
+
+
+def _hamming(a, b):
+    if a.lower().startswith("0x") and b.lower().startswith("0x"):
+        a, b = a.lower(), b.lower()
+    return sum(1 for x, y in zip(a, b) if x != y)
+
+
+def vault_check(addr, saved, supplier_id=None, supplier_name=None):
+    """saved: [{address, network, sid, name}]. Returns (findings, match)."""
+    a = (addr or "").strip()
+    out = []
+    match = next((s for s in saved if _same(s["address"], a)), None)
+    if match:
+        if supplier_id and match["sid"] != supplier_id:
+            out.append(F("WRONG_RECEIVER", "critical", f"This address belongs to {match['name']}",
+                         f"It is saved for {match['name']}, not the receiver you selected."))
+        else:
+            out.append(F("VERIFIED_RECEIVER", "info", f"Verified receiver: {match['name']}",
+                         f"This address is saved in your vault for {match['name']}."))
+        return out, match
+    if supplier_id:
+        theirs = [s["address"] for s in saved if s["sid"] == supplier_id]
+        out.append(F("ADDRESS_CHANGED", "critical", "Not a saved address for this receiver",
+                     f"{supplier_name or 'This receiver'} has on file: {', '.join(theirs) or 'nothing'}. This address is different. "
+                     "Confirm it with them on a channel you already trust."))
+    near = next((s for s in saved if len(s["address"]) == len(a) and _hamming(s["address"], a) <= 2), None)
+    if near:
+        out.append(F("ADDRESS_TYPO", "critical", f"Looks like a typo of {near['name']}'s address",
+                     f"New: {a}  Saved: {near['address']}. Only a character or two differ, which is usually a typing or copy error."))
+    elif not supplier_id:
+        out.append(F("NOT_IN_VAULT", "medium", "Not in your vault yet",
+                     "Confirm this address with the receiver, then save it with their name so future payments can be checked against it."))
+    return out, None
+
+
 # ---------- address poisoning ----------
 def lookalikes(addr, known):
     """Known addresses with the same start and end as addr but a different middle."""
@@ -117,7 +176,9 @@ def preflight(addr, stated=None, asset=None):
     if fam is None:
         return [F("UNRECOGNISED_ADDRESS", "critical", "Address format not recognised",
                   "This is not a TRON, Ethereum-style, Solana or Bitcoin address. Do not send to it.", True)]
-    problems = False
+    tok = token_findings(addr)
+    out.extend(tok)
+    problems = bool(tok)
     if not d["valid"]:
         out.append(F("INVALID_ADDRESS", "critical", "Address is not valid", d["note"] + " Sending to it could lose the funds.", True))
         problems = True

@@ -55,6 +55,5 @@ def end_session(conn, token):
 
 
 def demo_user_id(conn):
-    """The demo account has a random password nobody knows; it is only reachable through the demo button."""
-    u = db.one(conn, "SELECT id FROM users WHERE email=?", (DEMO_EMAIL,))
-    return u["id"] if u else create_user(conn, DEMO_EMAIL, secrets.token_urlsafe(18), "Demo account")
+    """Each demo visitor gets a brand-new guest account with an empty vault; nobody knows its random password."""
+    return create_user(conn, f"guest-{secrets.token_hex(5)}@intentlock.app", secrets.token_urlsafe(18), "Guest")
